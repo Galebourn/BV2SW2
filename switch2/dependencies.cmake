@@ -1,0 +1,16 @@
+# SDL's Switch package metadata pulls in Switch 1 Mesa. Resolve the static
+# libraries explicitly so the renderer links OunceVK and libounce instead.
+find_path(SWITCH_SDL_INCLUDE SDL.h PATHS "${DEVKITPRO}/portlibs/switch/include/SDL2" NO_DEFAULT_PATH REQUIRED)
+find_library(SWITCH_SDL SDL2 PATHS "${DEVKITPRO}/portlibs/switch/lib" NO_DEFAULT_PATH REQUIRED)
+find_path(SWITCH_PHYSFS_INCLUDE physfs.h PATHS "${DEVKITPRO}/portlibs/switch/include" NO_DEFAULT_PATH REQUIRED)
+find_library(SWITCH_PHYSFS physfs PATHS "${DEVKITPRO}/portlibs/switch/lib" NO_DEFAULT_PATH REQUIRED)
+find_library(OUNCE_EGL EGL PATHS "${DEVKITPRO}/portlibs/switch2/lib" NO_DEFAULT_PATH REQUIRED)
+find_path(BLOBBY_BOOST_INCLUDE boost/version.hpp HINTS "${CMAKE_SOURCE_DIR}/deps/boost-headers" NO_DEFAULT_PATH REQUIRED)
+add_library(SDL2::SDL2 STATIC IMPORTED GLOBAL)
+set_target_properties(SDL2::SDL2 PROPERTIES IMPORTED_LOCATION "${SWITCH_SDL}" INTERFACE_INCLUDE_DIRECTORIES "${SWITCH_SDL_INCLUDE}")
+add_library(SDL2::SDL2main INTERFACE IMPORTED GLOBAL)
+add_library(PhysFS::PhysFS STATIC IMPORTED GLOBAL)
+set_target_properties(PhysFS::PhysFS PROPERTIES IMPORTED_LOCATION "${SWITCH_PHYSFS}" INTERFACE_INCLUDE_DIRECTORIES "${SWITCH_PHYSFS_INCLUDE}")
+add_library(Boost::boost INTERFACE IMPORTED GLOBAL)
+set_target_properties(Boost::boost PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${BLOBBY_BOOST_INCLUDE}")
+add_compile_definitions(LUA_32BITS)
