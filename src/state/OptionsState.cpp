@@ -788,7 +788,7 @@ void InputOptionsState::getJoystickInput(std::string& action, TextManager::STRIN
 	if (action != "")
 		return;
 
-	action = InputManager::getSingleton()->getLastJoyAction();
+	action = getInputMgr().getLastJoyAction();
 	if(action == "") {
 		mConfirmButtonReleased = true;
 	}
@@ -797,7 +797,7 @@ void InputOptionsState::getJoystickInput(std::string& action, TextManager::STRIN
 	if (!mConfirmButtonReleased) {
 		action = "";
 	}
-	else if (InputManager::getSingleton()->exit()) {
+	else if (getInputMgr().exit()) {
 		action = mOldString;
 	}
 
@@ -1086,3 +1086,4 @@ void MiscOptionsState::init()
 	mNetworkSide = mOptionConfig.getInteger("network_side");
 	mLanguage = mOptionConfig.getString("language");
 }
+

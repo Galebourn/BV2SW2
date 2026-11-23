@@ -28,6 +28,7 @@ jobs:
           git commit -m "Import upstream game source and apply Switch 2 port"
           git push
       - name: Build NRO and game data
+        shell: bash
         run: docker build --progress=plain --file switch2/Dockerfile --output type=local,dest=dist . 2>&1 | tee build.log
       - name: Check NRO and assets
         run: |
