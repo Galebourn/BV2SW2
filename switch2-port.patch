@@ -1,0 +1,525 @@
+diff --git a/.dockerignore b/.dockerignore
+new file mode 100644
+index 0000000..3f9aae9
+--- /dev/null
++++ b/.dockerignore
+@@ -0,0 +1,3 @@
++.git
++build*
++dist
+diff --git a/.github/workflows/switch2.yml b/.github/workflows/switch2.yml
+new file mode 100644
+index 0000000..8fb23fe
+--- /dev/null
++++ b/.github/workflows/switch2.yml
+@@ -0,0 +1,26 @@
++name: Experimental Switch 2 kaiHEN build
++on:
++  workflow_dispatch:
++permissions:
++  contents: read
++jobs:
++  build:
++    runs-on: ubuntu-latest
++    timeout-minutes: 30
++    steps:
++      - uses: actions/checkout@v4
++      - name: Build NRO and game data
++        run: docker build --file switch2/Dockerfile --output type=local,dest=dist .
++      - name: Check NRO header
++        run: |
++          python3 - <<'PY'
++          from pathlib import Path
++          path = Path('dist/switch/blobby2/blobby.nro')
++          assert path.read_bytes()[16:20] == b'NRO0', 'Invalid NRO magic'
++          assert Path('dist/switch/blobby2/data/gfx.zip').is_file()
++          PY
++      - uses: actions/upload-artifact@v4
++        with:
++          name: blobby-volley-2-kaihen-experimental
++          path: dist/
++          if-no-files-found: error
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index e69ca0a..da63b94 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -10,8 +10,19 @@ if(POLICY CMP0167)
+   cmake_policy(SET CMP0167 OLD)
+ endif()
+ 
+-include(deps/sdl2.cmake)
+-include(deps/physfs.cmake)
++option(SWITCH2 "Build for Switch 2 / kaiHEN using ounce-devkit" OFF)
++if(SWITCH2)
++  if(NOT NINTENDO_SWITCH2)
++    message(FATAL_ERROR "SWITCH2 requires the ounce-devkit Switch2.cmake toolchain")
++  endif()
++  set(SWITCH ON)
++  include(switch2/dependencies.cmake)
++else()
++  include(deps/sdl2.cmake)
++endif()
++if(NOT SWITCH2)
++  include(deps/physfs.cmake)
++endif()
+ 
+ add_subdirectory(data)
+ add_subdirectory(src)
+diff --git a/data/config.xml b/data/config.xml
+index efcdaa7..340c9da 100644
+--- a/data/config.xml
++++ b/data/config.xml
+@@ -15,7 +15,7 @@
+ 	<var name="left_script_name" value="hyp014"/>
+ 	<var name="right_script_name" value="reduced"/>
+ 	<var name="left_player_human" value="true"/>
+-	<var name="right_player_human" value="true"/>
++	<var name="right_player_human" value="false"/>
+ 	<var name="left_player_name" value="Left Player"/>
+ 	<var name="right_player_name" value="Right Player"/>
+ 	<var name="gamefps" value="75"/>
+diff --git a/data/inputconfig.xml b/data/inputconfig.xml
+index 6924e79..f788d75 100644
+--- a/data/inputconfig.xml
++++ b/data/inputconfig.xml
+@@ -1,7 +1,7 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ 
+ <userconfig>
+-	<var name="left_blobby_device" value="keyboard"/>
++	<var name="left_blobby_device" value="joystick"/>
+ 	<var name="left_blobby_mouse_jumpbutton" value="1"/>
+ 	<var name="left_blobby_mouse_sensitivity" value="1"/>
+ 	<var name="left_blobby_keyboard_left" value="a"/>
+@@ -9,7 +9,7 @@
+ 	<var name="left_blobby_keyboard_jump" value="w"/>
+ 	<var name="left_blobby_joystick_left" value="joy_0_axis_-1"/>
+ 	<var name="left_blobby_joystick_right" value="joy_0_axis_1"/>
+-	<var name="left_blobby_joystick_jump" value="joy_0_axis_2"/>
++	<var name="left_blobby_joystick_jump" value="joy_0_button_0"/>
+ 
+ 	<var name="right_blobby_device" value="keyboard"/>
+ 	<var name="right_blobby_mouse_jumpbutton" value="1"/>
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 43ec67c..50d58fd 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -82,8 +82,10 @@ set (blobby-server_SRC ${common_SRC}
+ 	server/servermain.cpp
+ 	)
+ 
+-find_package(Boost REQUIRED)
+-find_package(OpenGL)
++if(NOT SWITCH2)
++  find_package(Boost REQUIRED)
++  find_package(OpenGL)
++endif()
+ add_subdirectory(raknet)
+ add_subdirectory(blobnet)
+ 
+@@ -103,12 +105,27 @@ endif()
+ set(BLOBBY_COMMON_LIBS lua::lua blobnet::blobnet tinyxml2::tinyxml2 PhysFS::PhysFS SDL2::SDL2main SDL2::SDL2 Boost::boost)
+ 
+ # other additional dependencies
+-if (NOT WIN32)
++if (NOT WIN32 AND NOT SWITCH2)
+ 	find_package(Threads REQUIRED)
+ 	set(BLOBBY_COMMON_LIBS ${BLOBBY_COMMON_LIBS} Threads::Threads)
+ endif ()
+ 
+-if (SWITCH)
++if (SWITCH2)
++  add_executable(blobby main.cpp ${blobby_SRC})
++  target_compile_definitions(blobby PRIVATE BLOBBY_SWITCH2)
++  target_link_libraries(blobby ${BLOBBY_COMMON_LIBS} ${OUNCE_EGL} nx m)
++  set_target_properties(blobby PROPERTIES SUFFIX ".elf")
++  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/blobby.nacp"
++    COMMAND "${NX_NACPTOOL_EXE}" --create "Blobby Volley 2 (Switch 2)"
++      "Blobby Volley 2 contributors" "${PROJECT_VERSION}" "${CMAKE_CURRENT_BINARY_DIR}/blobby.nacp"
++    VERBATIM)
++  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/blobby.nro"
++    COMMAND "${NX_ELF2NRO_EXE}" "$<TARGET_FILE:blobby>" "${CMAKE_CURRENT_BINARY_DIR}/blobby.nro"
++      "--icon=${CMAKE_SOURCE_DIR}/data/Icon.jpg" "--nacp=${CMAKE_CURRENT_BINARY_DIR}/blobby.nacp"
++    DEPENDS blobby "${CMAKE_CURRENT_BINARY_DIR}/blobby.nacp" "${CMAKE_SOURCE_DIR}/data/Icon.jpg"
++    VERBATIM)
++  add_custom_target(blobby-nro ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/blobby.nro")
++elseif (SWITCH)
+ 	add_executable(blobby.elf main.cpp ${blobby_SRC})
+ 	target_link_libraries(blobby.elf ${DEVKITPRO}/portlibs/switch/lib/libEGL.a ${DEVKITPRO}/portlibs/switch/lib/libdrm_nouveau.a ${DEVKITPRO}/portlibs/switch/lib/libglapi.a ${DEVKITPRO}/libnx/lib/libnx.a)
+ 	add_custom_command(
+@@ -130,7 +147,13 @@ else ()
+ 	endif ()
+ endif ()
+ 
+-target_link_libraries(blobby ${BLOBBY_COMMON_LIBS} ${OPENGL_LIBRARIES})
++if(NOT SWITCH2)
++  if(SWITCH)
++    target_link_libraries(blobby.elf ${BLOBBY_COMMON_LIBS} ${OPENGL_LIBRARIES})
++  else()
++    target_link_libraries(blobby ${BLOBBY_COMMON_LIBS} ${OPENGL_LIBRARIES})
++  endif()
++endif()
+ 
+ 
+ if (UNIX AND (NOT ANDROID) OR WIN32)
+diff --git a/src/FileSystem.cpp b/src/FileSystem.cpp
+index 1523d14..e7a6dc8 100644
+--- a/src/FileSystem.cpp
++++ b/src/FileSystem.cpp
+@@ -33,6 +33,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ #include <SDL.h>
+ #endif
+ #include <physfs.h>
++#ifdef BLOBBY_SWITCH2
++#include <sys/stat.h>
++#endif
+ 
+ /* implementation */
+ 
+@@ -150,7 +153,13 @@ std::string FileSystem::getBaseDir()
+ 
+ std::string FileSystem::getPrefDir()
+ {
+-	return PHYSFS_getPrefDir("org.dk", "blobby");
++	#ifdef BLOBBY_SWITCH2
++    const char* dir = "sdmc:/switch/blobby2/user";
++    ::mkdir(dir, 0777);
++    return dir;
++#else
++    return PHYSFS_getPrefDir("org.dk", "blobby");
++#endif
+ }
+ 
+ void FileSystem::probeDir(const std::string& dirname)
+diff --git a/src/RenderManagerSDL.cpp b/src/RenderManagerSDL.cpp
+index 4b1b18e..507988d 100644
+--- a/src/RenderManagerSDL.cpp
++++ b/src/RenderManagerSDL.cpp
+@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ /* includes */
+ #include "FileExceptions.h"
+ #include "DuelMatchState.h"
++#include <stdexcept>
+ 
+ /* implementation */
+ SDL_Surface* RenderManagerSDL::colorSurface(SDL_Surface *surface, Color color)
+@@ -119,6 +120,10 @@ void RenderManagerSDL::init(int xResolution, int yResolution, bool fullscreen)
+ 	mRenderer = SDL_CreateRenderer(mWindow, -1, 0);
+ #endif
+ 
++#ifdef BLOBBY_SWITCH2
++    if (!mWindow || !mRenderer)
++        throw std::runtime_error(std::string("SDL video initialization: ") + SDL_GetError());
++#endif
+ 	// Hide mousecursor
+ 	SDL_ShowCursor(0);
+ 
+diff --git a/src/main.cpp b/src/main.cpp
+index 1909d40..16fabca 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -56,7 +56,7 @@ void deinit()
+ {
+ 	SDL_Quit();
+ 
+-#if (defined __SWITCH__) && (defined DEBUG)
++#if defined(__SWITCH__) && (defined(DEBUG) || defined(BLOBBY_SWITCH2))
+ 	socketExit();
+ #endif
+ }
+@@ -81,7 +81,11 @@ void setupPHYSFS()
+ 
+ 	// set read dir (files in datafolder next to working dir)
+ 	{
+-		std::string dataDir = "data";
++		#ifdef BLOBBY_SWITCH2
++        std::string dataDir = "sdmc:/switch/blobby2/data";
++#else
++        std::string dataDir = "data";
++#endif
+ 		fs.addToSearchPath(dataDir);
+ 		for(const auto& archive : subdirs) {
+ 			fs.addToSearchPath(fs.join(dataDir, archive + ".zip"));
+@@ -121,9 +125,11 @@ void setupPHYSFS()
+ 
+ int main(int argc, char* argv[])
+ {
+-#if (defined __SWITCH__) && (defined DEBUG)
++#if defined(__SWITCH__) && (defined(DEBUG) || defined(BLOBBY_SWITCH2))
+ 	socketInitializeDefault();   
++#ifdef DEBUG
+ 	nxlinkStdio();
++#endif
+ #endif
+ 
+ 	DEBUG_STATUS("started main");
+@@ -178,7 +184,11 @@ int main(int argc, char* argv[])
+ 
+ 		BlobbyApp app( std::unique_ptr<State>(new MainMenuState()), gameConfig );
+ 
+-		while (running)
++		#ifdef BLOBBY_SWITCH2
++        while (running && appletMainLoop())
++#else
++        while (running)
++#endif
+ 		{
+ 			app.getInputManager().updateInput();
+ 			running = app.getInputManager().running();
+@@ -232,7 +242,7 @@ int main(int argc, char* argv[])
+ 		std::cerr << e.what() << std::endl;
+ 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", (std::string("An error occurred, blobby will close: ") + e.what()).c_str(), nullptr);
+ 		SDL_Quit();
+-#if (defined __SWITCH__) && (defined DEBUG)
++#if defined(__SWITCH__) && (defined(DEBUG) || defined(BLOBBY_SWITCH2))
+ 	socketExit();
+ #endif
+ 		exit (EXIT_FAILURE);
+diff --git a/switch2/Dockerfile b/switch2/Dockerfile
+new file mode 100644
+index 0000000..8bda2d9
+--- /dev/null
++++ b/switch2/Dockerfile
+@@ -0,0 +1,18 @@
++FROM devkitpro/devkita64:20260219 AS build
++RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl cmake ninja-build libboost-dev && rm -rf /var/lib/apt/lists/*
++COPY switch2/install-ounce.sh /tmp/install-ounce.sh
++RUN sh /tmp/install-ounce.sh && dkp-pacman -S --needed --noconfirm switch-sdl2 switch-physfs
++WORKDIR /src
++COPY . .
++# Boost is header-only in this game. Isolate its headers from host libc headers.
++RUN mkdir -p deps/boost-headers && cp -a /usr/include/boost deps/boost-headers/
++RUN cmake -S . -B build-switch2 -G Ninja \
++    -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/libounce/cmake/Switch2.cmake \
++    -DSWITCH2=ON -DCMAKE_BUILD_TYPE=Release \
++    -DCMAKE_INSTALL_PREFIX=/out/switch/blobby2 \
++    && cmake --build build-switch2 --parallel 2 \
++    && cmake --install build-switch2
++RUN mkdir -p /out/switch/blobby2/user /out/licenses && cp COPYING AUTHORS /out/licenses/ \
++    && dkp-pacman -Q > /out/build-packages.txt
++FROM scratch AS export
++COPY --from=build /out/ /
+diff --git a/switch2/README.txt b/switch2/README.txt
+new file mode 100644
+index 0000000..d3f11c6
+--- /dev/null
++++ b/switch2/README.txt
+@@ -0,0 +1,57 @@
++Blobby Volley 2 — experimental Switch 2 / kaiHEN port
++
++STATUS: SOURCE DRAFT ONLY. Not compiled or tested on hardware. No NRO is
++included in this source package. Further compile/link/runtime fixes may be needed.
++
++Based on danielknobe/blobbyvolley2 commit:
++c28c5fa87872b7592f34f5f86196e93d127b6cf9
++The included ounce installer is from ouncebrew/ounce-devkit commit:
++5e957599bd498643d82e5470aec80da67a12685d (MIT; see ounce-LICENSE).
++SDK packages are rolling versions; successful builds record build-packages.txt.
++
++Build on a machine with Docker and access to devkitPro/ounce package servers:
++  docker build --file switch2/Dockerfile --output type=local,dest=dist .
++Run from the repository root. Alternatively upload this source to your own
++GitHub repository and run the manual 'Experimental Switch 2 kaiHEN build'
++workflow from Actions. No repository has been created or published for you.
++
++After a SUCCESSFUL build, copy dist/switch/blobby2 to /switch/blobby2 on the
++SD card. Keep the directory name: the port uses sdmc:/switch/blobby2/data.
++Launch blobby.nro through kaiHEN's homebrew menu in a native Switch 2 game.
++This package does not install or modify kaiHEN or console firmware.
++
++First-run defaults: left human player versus right AI; left stick moves;
++A jumps/selects; D-pad navigates; Plus goes back/pauses. These mappings are
++inherited from the original Switch SDL port and still require hardware testing.
++Configuration/replays are written below /switch/blobby2/user.
++To reset preferences, back up and remove that user directory's config files.
++
++Changes: ounce CMake toolchain integration; NRO packaging; explicit SDL/PhysFS
++static libraries and OunceVK EGL; separate SD preference directory; applet exit
++loop; socket initialization in release builds; SDL renderer error reporting;
++controller and AI defaults. The game logic and assets are upstream originals.
++
++Known unverified areas: compilation/link dependencies, GPU initialization,
++PhysFS SD support, controller enumeration and hotplug, audio, suspend/resume,
++network multiplayer. The immediate target is a local match against the AI.
++
++Hardware smoke test after compilation:
++1. Launch and check title/menu display, joystick navigation and audio.
++2. Start a local match; move, jump, score, and confirm the AI plays.
++3. Pause, return to menu, quit, and relaunch to check saved preferences.
++4. Report firmware, kaiHEN version, build-packages.txt and any error text.
++
++Local verification: git diff --check, XML parsing, patch applicability and
++source-package inspection. Cross-compilation was blocked: no devkitPro,
++Docker or installed WSL; package downloads returned HTTP 403; MSYS shell
++initialization also failed in the execution environment.
++
++Licensing: retain COPYING and AUTHORS. Blobby Volley 2 is GPL-2.0-or-later;
++individual bundled dependencies retain their upstream notices. The complete
++modified game source is included. Distribute corresponding source alongside
++any resulting binary, with relevant toolchain/library license notices.
++
++References:
++https://github.com/danielknobe/blobbyvolley2
++https://github.com/ouncebrew/ounce-devkit
++https://github.com/ouncebrew/kaihen
+diff --git a/switch2/dependencies.cmake b/switch2/dependencies.cmake
+new file mode 100644
+index 0000000..2b6afd7
+--- /dev/null
++++ b/switch2/dependencies.cmake
+@@ -0,0 +1,16 @@
++# SDL's Switch package metadata pulls in Switch 1 Mesa. Resolve the static
++# libraries explicitly so the renderer links OunceVK and libounce instead.
++find_path(SWITCH_SDL_INCLUDE SDL.h PATHS "${DEVKITPRO}/portlibs/switch/include/SDL2" NO_DEFAULT_PATH REQUIRED)
++find_library(SWITCH_SDL SDL2 PATHS "${DEVKITPRO}/portlibs/switch/lib" NO_DEFAULT_PATH REQUIRED)
++find_path(SWITCH_PHYSFS_INCLUDE physfs.h PATHS "${DEVKITPRO}/portlibs/switch/include" NO_DEFAULT_PATH REQUIRED)
++find_library(SWITCH_PHYSFS physfs PATHS "${DEVKITPRO}/portlibs/switch/lib" NO_DEFAULT_PATH REQUIRED)
++find_library(OUNCE_EGL EGL PATHS "${DEVKITPRO}/portlibs/switch2/lib" NO_DEFAULT_PATH REQUIRED)
++find_path(BLOBBY_BOOST_INCLUDE boost/version.hpp HINTS "${CMAKE_SOURCE_DIR}/deps/boost-headers" NO_DEFAULT_PATH REQUIRED)
++add_library(SDL2::SDL2 STATIC IMPORTED GLOBAL)
++set_target_properties(SDL2::SDL2 PROPERTIES IMPORTED_LOCATION "${SWITCH_SDL}" INTERFACE_INCLUDE_DIRECTORIES "${SWITCH_SDL_INCLUDE}")
++add_library(SDL2::SDL2main INTERFACE IMPORTED GLOBAL)
++add_library(PhysFS::PhysFS STATIC IMPORTED GLOBAL)
++set_target_properties(PhysFS::PhysFS PROPERTIES IMPORTED_LOCATION "${SWITCH_PHYSFS}" INTERFACE_INCLUDE_DIRECTORIES "${SWITCH_PHYSFS_INCLUDE}")
++add_library(Boost::boost INTERFACE IMPORTED GLOBAL)
++set_target_properties(Boost::boost PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${BLOBBY_BOOST_INCLUDE}")
++add_compile_definitions(LUA_32BITS)
+diff --git a/switch2/install-ounce.sh b/switch2/install-ounce.sh
+new file mode 100644
+index 0000000..7a23b4e
+--- /dev/null
++++ b/switch2/install-ounce.sh
+@@ -0,0 +1,105 @@
++#!/bin/sh
++# SPDX-License-Identifier: MIT
++#
++# Installs the Switch 2 homebrew devkit into a devkitPro installation, from
++# the [ounce] pacman repository at https://pkg.ouncebrew.org:
++#   sh install.sh
++#
++# It does these steps with devkitPro pacman (dkp-pacman, or pacman on Arch
++# Linux and MSYS2 with devkitPro's repositories):
++# 1. It adds the [ounce] repository's signing key, after checking that its
++#    fingerprint is the one below.
++# 2. It adds [ounce] to pacman's configuration.
++# 3. It installs the devkit's packages, and with them the devkitPro packages
++#    that they depend on (devkitA64, switch-tools, the CMake toolchains):
++#    - libounce: the libnx-compatible library for Switch 2, in
++#      $DEVKITPRO/libounce, with switch2vars.sh and the CMake toolchain.
++#    - ouncevk: Vulkan, EGL, OpenGL and OpenGL ES, in
++#      $DEVKITPRO/portlibs/switch2.
++#    - libkaihen: kaiHEN's homebrew API (kaihen.h), in
++#      $DEVKITPRO/portlibs/switch2.
++# Update them later as other devkitPro packages: dkp-pacman -Syu.
++set -eu
++
++# The [ounce] repository and the fingerprint of its signing key.
++REPO_URL="${OUNCE_REPO_URL:-https://pkg.ouncebrew.org}"
++SIGNING_KEY=DFEAE7FA965D1E6C0D41D4D75DB9FDBFA4A4DE29
++PACKAGES="libounce ouncevk libkaihen"
++
++# True on Windows (MSYS2), which has no sudo.
++is_windows() {
++    case "$(uname -s)" in
++    MINGW* | MSYS*) return 0 ;;
++    *) return 1 ;;
++    esac
++}
++
++# Runs a command as root, unless the current user is root or on Windows.
++as_root() {
++    if [ "$(id -u)" -eq 0 ] || is_windows; then
++        "$@"
++    else
++        sudo "$@"
++    fi
++}
++
++# Writes a URL to a file, with curl or wget.
++download() {
++    if command -v curl >/dev/null 2>&1; then
++        curl -fsSL -o "$2" "$1"
++    elif command -v wget >/dev/null 2>&1; then
++        wget -q -O "$2" "$1"
++    else
++        echo "install.sh: curl or wget is needed" >&2
++        exit 1
++    fi
++}
++
++# devkitPro pacman: dkp-pacman with its own configuration, or pacman on Arch
++# Linux and MSYS2 when it has devkitPro's repositories.
++if command -v dkp-pacman >/dev/null 2>&1; then
++    PACMAN=dkp-pacman
++    PACMAN_KEY=dkp-pacman-key
++    PACMAN_CONF=/opt/devkitpro/pacman/etc/pacman.conf
++elif command -v pacman >/dev/null 2>&1 && pacman -Sl dkp-libs >/dev/null 2>&1; then
++    PACMAN=pacman
++    PACMAN_KEY=pacman-key
++    PACMAN_CONF=/etc/pacman.conf
++else
++    cat >&2 <<MESSAGE
++install.sh: devkitPro pacman is not installed. The instructions are at
++  https://devkitpro.org/wiki/devkitPro_pacman
++Then run this script again. You can also use the Docker image instead; see
++README.md.
++MESSAGE
++    exit 1
++fi
++
++echo "Adding the [ounce] signing key $SIGNING_KEY"
++work=$(mktemp -d)
++trap 'rm -rf "$work"' EXIT
++download "$REPO_URL/ounce.gpg" "$work/ounce.gpg"
++as_root "$PACMAN_KEY" --add "$work/ounce.gpg"
++# Fails when the downloaded key is not the one named here.
++as_root "$PACMAN_KEY" --lsign-key "$SIGNING_KEY"
++
++if ! grep -q '^\[ounce\]' "$PACMAN_CONF"; then
++    echo "Adding [ounce] to $PACMAN_CONF"
++    printf '\n[ounce]\nServer = %s\n' "$REPO_URL" | as_root tee -a "$PACMAN_CONF" >/dev/null
++fi
++
++# The devkit before these packages was unpacked from an archive. Its files
++# belong to no package; the packages replace them.
++overwrite="--overwrite /opt/devkitpro/libounce/* --overwrite /opt/devkitpro/portlibs/switch2/*"
++overwrite="$overwrite --overwrite /opt/devkitpro/switch2vars.sh"
++
++echo "Installing $PACKAGES"
++# The patterns are pacman's: the shell must not expand them.
++set -f
++# shellcheck disable=SC2086
++as_root "$PACMAN" -Sy --needed --noconfirm $overwrite $PACKAGES
++set +f
++if [ -f /opt/devkitpro/ounce-devkit-version.txt ]; then
++    as_root rm -f /opt/devkitpro/ounce-devkit-version.txt
++fi
++"$PACMAN" -Q $PACKAGES
+diff --git a/switch2/ounce-LICENSE b/switch2/ounce-LICENSE
+new file mode 100644
+index 0000000..96dbc80
+--- /dev/null
++++ b/switch2/ounce-LICENSE
+@@ -0,0 +1,21 @@
++MIT License
++
++Copyright (c) 2026 the ounce-devkit contributors
++
++Permission is hereby granted, free of charge, to any person obtaining a copy
++of this software and associated documentation files (the "Software"), to deal
++in the Software without restriction, including without limitation the rights
++to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is
++furnished to do so, subject to the following conditions:
++
++The above copyright notice and this permission notice shall be included in all
++copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++SOFTWARE.
+
