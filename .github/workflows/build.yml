@@ -1,0 +1,49 @@
+name: Build Switch 2 NRO
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import pinned upstream and apply port
+        if: ${{ hashFiles('CMakeLists.txt') == '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/blobby-import"
+          curl -fL https://github.com/danielknobe/blobbyvolley2/archive/c28c5fa87872b7592f34f5f86196e93d127b6cf9.tar.gz | tar -xz --strip-components=1 -C "$RUNNER_TEMP/blobby-import"
+          cd "$RUNNER_TEMP/blobby-import"
+          git apply "$GITHUB_WORKSPACE/switch2-port.patch"
+          rsync -a --exclude=.github/ --exclude=README.md ./ "$GITHUB_WORKSPACE/"
+          cd "$GITHUB_WORKSPACE"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Import upstream game source and apply Switch 2 port"
+          git push
+      - name: Build NRO and game data
+        run: docker build --progress=plain --file switch2/Dockerfile --output type=local,dest=dist . 2>&1 | tee build.log
+      - name: Check NRO and assets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('dist/switch/blobby2/blobby.nro')
+          assert p.read_bytes()[16:20] == b'NRO0'
+          assert Path('dist/switch/blobby2/data/gfx.zip').is_file()
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-log
+          path: build.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blobby-volley-2-kaihen-experimental
+          path: dist/
+          if-no-files-found: error
