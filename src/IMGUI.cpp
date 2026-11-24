@@ -34,7 +34,7 @@ enum ObjectType
 	IMAGE,
 	OVERLAY,
 	TEXT,
-	BUTTON, // Unused!
+	BUTTON, // Text button with a visible controller focus indicator.
 	SCROLLBAR,
 	ACTIVESCROLLBAR,
 	EDITBOX,
@@ -108,6 +108,19 @@ void IMGUI::begin()
 	mIdCounter = 0;
 }
 
+#ifdef BLOBBY_SWITCH2
+namespace {
+void drawFocusFrame(RenderManager& renderer, const Vector2& a, const Vector2& b)
+{
+    const Color gold(255, 215, 40);
+    renderer.drawOverlay(1.0f, a, Vector2(b.x, a.y + 3), gold);
+    renderer.drawOverlay(1.0f, Vector2(a.x, b.y - 3), b, gold);
+    renderer.drawOverlay(1.0f, a, Vector2(a.x + 3, b.y), gold);
+    renderer.drawOverlay(1.0f, Vector2(b.x - 3, a.y), b, gold);
+}
+}
+#endif
+
 void IMGUI::end(RenderManager& renderer)
 {
 	int FontSize;
@@ -124,6 +137,21 @@ void IMGUI::end(RenderManager& renderer)
 				renderer.drawOverlay( obj.alpha, obj.pos1, obj.pos2, obj.col);
 				break;
 
+            case BUTTON:
+#ifdef BLOBBY_SWITCH2
+                if (!mInactive && obj.id == mActiveButton)
+                {
+                    const int size = obj.flags & TF_SMALL_FONT ? FONT_WIDTH_SMALL : FONT_WIDTH_NORMAL;
+                    const Vector2 a = obj.pos1 - Vector2(6, 5);
+                    const Vector2 b = obj.pos1 + Vector2(TextManager::getUTF8Length(obj.text) * size + 6, size + 5);
+                    renderer.drawOverlay(0.92f, a, b, Color(12, 24, 48));
+                    drawFocusFrame(renderer, a, b);
+                }
+                // Focus is evaluated after navigation, so only the final
+                // selected widget is highlighted (including when moving up).
+                renderer.drawText(obj.text, obj.pos1, obj.flags & ~TF_HIGHLIGHT);
+                break;
+#endif
 			case TEXT:
 				renderer.drawText( obj.text, obj.pos1, obj.flags);
 				break;
@@ -185,6 +213,25 @@ void IMGUI::end(RenderManager& renderer)
 			default:
 				break;
 		}
+#ifdef BLOBBY_SWITCH2
+        if (!mInactive && obj.id == mActiveButton)
+        {
+            switch (obj.type)
+            {
+                case SCROLLBAR: case ACTIVESCROLLBAR:
+                    drawFocusFrame(renderer, obj.pos1 - Vector2(3, 3), obj.pos1 + Vector2(213, 29));
+                    break;
+                case EDITBOX: case ACTIVEEDITBOX:
+                    FontSize = obj.flags & TF_SMALL_FONT ? FONT_WIDTH_SMALL : FONT_WIDTH_NORMAL;
+                    drawFocusFrame(renderer, obj.pos1 - Vector2(3, 3), obj.pos1 + Vector2(13 + obj.length * FontSize, 13 + FontSize));
+                    break;
+                case SELECTBOX: case ACTIVESELECTBOX: case CHAT: case ACTIVECHAT:
+                    drawFocusFrame(renderer, obj.pos1 - Vector2(3, 3), obj.pos2 + Vector2(3, 3));
+                    break;
+                default: break;
+            }
+        }
+#endif
 		mQueue->pop();
 	}
 #if BLOBBY_ON_DESKTOP
@@ -268,7 +315,11 @@ bool IMGUI::doButton(int id, const Vector2& position, const std::string& text, u
 	obj.id = id;
 	obj.pos1 = position;
 	obj.text = text;
-	obj.type = TEXT;
+#ifdef BLOBBY_SWITCH2
+    obj.type = BUTTON;
+#else
+    obj.type = TEXT;
+#endif
 	obj.flags = flags;
 
 	int const textLength = TextManager::getUTF8Length(text);

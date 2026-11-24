@@ -27,6 +27,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "PlayerInput.h"
 #include "Vector.h"
 #include "BlobbyDebug.h"
+#ifdef BLOBBY_SWITCH2
+#include "input_device/MenuNavigation.h"
+#endif
 
 enum class KeyAction
 {
@@ -94,6 +97,10 @@ class InputManager : public ObjectCounter<InputManager>
 
 		SDL_Joystick* getJoystickById(int joyId);
 	private:
+#ifdef BLOBBY_SWITCH2
+        MenuNavigation mMenuNavigation;
+        void updateMenuNavigation();
+#endif
 		// Keyboard
 		//static InputKeyMap mKeyMap[];	// Type for String <-convert-> SDLKey
 

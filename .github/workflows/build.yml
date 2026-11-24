@@ -27,6 +27,11 @@ jobs:
           git add .
           git commit -m "Import upstream game source and apply Switch 2 port"
           git push
+      - name: Test menu navigation filtering
+        shell: bash
+        run: |
+          g++ -std=c++11 -Wall -Wextra -Werror -Isrc test/menu_navigation.cpp -o /tmp/menu-navigation-test
+          /tmp/menu-navigation-test
       - name: Build NRO and game data
         shell: bash
         run: docker build --progress=plain --file switch2/Dockerfile --output type=local,dest=dist . 2>&1 | tee build.log

@@ -1,4 +1,4 @@
-﻿/*=============================================================================
+/*=============================================================================
 Blobby Volley 2
 Copyright (C) 2006 Jonathan Sieber (jonathan_sieber@yahoo.de)
 Copyright (C) 2006 Daniel Knobe (daniel-knobe@web.de)
@@ -274,7 +274,16 @@ void InputManager::updateInput()
 					mLastJoyAction = joyAction.toString();
 				}
 
-				switch (joyAction.toKeyAction())
+				// SDL reports stick directions both as axes and synthetic buttons.
+                // Poll the complete stick once below, so a diagonal cannot
+                // become two competing menu actions in the same frame.
+                KeyAction menuAction = joyAction.toKeyAction();
+#ifdef BLOBBY_SWITCH2
+                if (menuAction == KeyAction::UP || menuAction == KeyAction::DOWN ||
+                    menuAction == KeyAction::LEFT || menuAction == KeyAction::RIGHT)
+                    menuAction = KeyAction::NONE;
+#endif
+                switch (menuAction)
 				{
 					case KeyAction::UP:
 						mUp = true;
@@ -318,8 +327,42 @@ void InputManager::updateInput()
 				}
 		}
 	}
+#ifdef BLOBBY_SWITCH2
+    updateMenuNavigation();
+#endif
 }
 
+#ifdef BLOBBY_SWITCH2
+void InputManager::updateMenuNavigation()
+{
+    int x = 0, y = 0;
+    unsigned dpad = 0;
+    for (int i = 0; i < SDL_NumJoysticks(); ++i)
+    {
+        SDL_Joystick* joystick = SDL_JoystickFromInstanceID(SDL_JoystickGetDeviceInstanceID(i));
+        if (!joystick || !SDL_JoystickGetAttached(joystick)) continue;
+        // devkitPro SDL2 Switch buttons 12..15: left, up, right, down.
+        unsigned buttons = 0;
+        for (int b = 0; b < 4; ++b)
+            if (SDL_JoystickGetButton(joystick, 12 + b)) buttons |= 1u << b;
+        const int sx = SDL_JoystickGetAxis(joystick, 0);
+        const int sy = SDL_JoystickGetAxis(joystick, 1);
+        // Prefer physical D-pad input over stick tilt on any controller.
+        if (buttons) { dpad = buttons; break; }
+        if (x == 0 && y == 0 && (std::abs(sx) >= 8000 || std::abs(sy) >= 8000))
+        { x = sx; y = sy; }
+    }
+    using D = MenuNavigation::Direction;
+    const D direction = mMenuNavigation.update(x, y, dpad, SDL_GetTicks());
+    if (direction != D::None)
+    {
+        mUp = direction == D::Up;
+        mDown = direction == D::Down;
+        mLeft = direction == D::Left;
+        mRight = direction == D::Right;
+    }
+}
+#endif
 
 // GUI-Methods
 bool InputManager::up() const
