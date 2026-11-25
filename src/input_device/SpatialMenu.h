@@ -21,7 +21,10 @@ inline int spatialMenuNext(const std::vector<MenuRect>& items, int current, int 
     {
         if (item.id == current) continue;
         const float x = (item.x1 + item.x2 - from->x1 - from->x2) * 0.5f;
-        const float y = (item.y1 + item.y2 - from->y1 - from->y2) * 0.5f;
+        // Tall list panels align with the controls beside their first row,
+        // rather than treating their middle as an unrelated navigation row.
+        const float y = item.y1 + std::fmin(item.y2-item.y1,40.0f)*0.5f
+                      - from->y1 - std::fmin(from->y2-from->y1,40.0f)*0.5f;
         const float forward = dx ? x * dx : y * dy;
         if (forward <= 1) continue;
         const float overlap = dx ? std::fmin(item.y2, from->y2) - std::fmax(item.y1, from->y1)
@@ -33,3 +36,4 @@ inline int spatialMenuNext(const std::vector<MenuRect>& items, int current, int 
     }
     return result;
 }
+
