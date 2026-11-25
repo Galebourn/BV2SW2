@@ -30,6 +30,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "SoundManager.h"
 #include "SpeedController.h"
 #include "IUserConfigReader.h"
+#include "UserConfig.h"
 
 #include "LocalInputSource.h"
 #include "ScriptedInputSource.h"
@@ -37,8 +38,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 /* implementation */
 LocalGameState::~LocalGameState() = default;
 
-LocalGameState::LocalGameState()
-	: mWinner(false), mRecorder(new ReplayRecorder())
+LocalGameState::LocalGameState(int players)
+    : mWinner(false), mLocalPlayers(players), mRecorder(new ReplayRecorder())
 {
 
 }
@@ -68,7 +69,14 @@ std::shared_ptr<InputSource> LocalGameState::createInputSource( IUserConfigReade
 
 void LocalGameState::init()
 {
-	std::shared_ptr<IUserConfigReader> config = IUserConfigReader::createUserConfigReader("config.xml");
+    auto config = std::make_shared<UserConfig>();
+    config->loadFile("config.xml");
+    if(mLocalPlayers>0) {
+        config->setBool("left_player_human",true);
+        config->setBool("right_player_human",mLocalPlayers==2);
+    }
+    mHuman[0]=config->getBool("left_player_human");
+    mHuman[1]=config->getBool("right_player_human");
 	PlayerIdentity leftPlayer = config->loadPlayerIdentity(LEFT_PLAYER, false);
 	PlayerIdentity rightPlayer = config->loadPlayerIdentity(RIGHT_PLAYER, false);
 
@@ -97,6 +105,12 @@ void LocalGameState::init()
 void LocalGameState::step_impl()
 {
 	IMGUI& imgui = getIMGUI();
+#ifdef BLOBBY_SWITCH2
+    auto& controllers=getInputMgr().controllers();
+    const bool disconnected=mLocalPlayers>0 && !controllers.ready(mLocalPlayers);
+    if(disconnected) mMatch->pause();
+    if(mMatch->isPaused() || mWinner) controllers.stopAll();
+#endif
 
 	if(!mErrorMessage.empty())
 	{
@@ -114,10 +128,17 @@ void LocalGameState::step_impl()
 		displayQueryPrompt(200,
 			TextManager::LBL_CONF_QUIT,
 			std::make_tuple(TextManager::LBL_YES, [&](){ switchState(new MainMenuState); }),
-			std::make_tuple(TextManager::LBL_NO,  [&](){ mMatch->unpause(); }),
+            std::make_tuple(TextManager::LBL_NO, [&](){
+#ifdef BLOBBY_SWITCH2
+                if(disconnected) return;
+#endif
+                mMatch->unpause(); }),
 			std::make_tuple(TextManager::RP_SAVE, [&](){ mSaveReplay = true; imgui.resetSelection(); }));
 
 		imgui.doCursor();
+#ifdef BLOBBY_SWITCH2
+        if(disconnected) imgui.doText(GEN_ID,Vector2(400,450),"RECONNECT THE MISSING CONTROLLER",TF_SMALL_FONT|TF_ALIGN_CENTER);
+#endif
 	}
 	else if (mWinner)
 	{
@@ -128,7 +149,7 @@ void LocalGameState::step_impl()
 		}
 		if (imgui.doButton(GEN_ID, Vector2(420, 340), TextManager::GAME_TRY_AGAIN))
 		{
-			switchState(new LocalGameState());
+			switchState(new LocalGameState(mLocalPlayers));
 		}
 		if (imgui.doButton(GEN_ID, Vector2(500, 390), TextManager::RP_SAVE, TF_ALIGN_CENTER))
 		{
@@ -156,6 +177,11 @@ void LocalGameState::step_impl()
 	{
 		mRecorder->record(mMatch->getState());
 		mMatch->step();
+#ifdef BLOBBY_SWITCH2
+        for(const auto& event:mMatch->getEvents())
+            if(event.event==MatchEvent::BALL_HIT_BLOB && event.side>=LEFT_PLAYER && event.side<=RIGHT_PLAYER && mHuman[event.side])
+                controllers.hit(event.side);
+#endif
 
 		if (mMatch->winningPlayer() != NO_PLAYER)
 		{

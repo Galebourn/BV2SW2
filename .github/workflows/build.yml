@@ -34,6 +34,10 @@ jobs:
           /tmp/menu-navigation-test
           g++ -std=c++11 -Wall -Wextra -Werror -Isrc test/spatial_menu.cpp -o /tmp/spatial-menu-test
           /tmp/spatial-menu-test
+          g++ -std=c++11 -Wall -Wextra -Werror -Isrc test/controller_mapping.cpp -o /tmp/controller-mapping-test
+          /tmp/controller-mapping-test
+          g++ -std=c++11 -Wall -Wextra -Werror -Itest/controller_stubs -Isrc test/switch_controllers.cpp -o /tmp/switch-controllers-test
+          /tmp/switch-controllers-test
       - name: Test menu interactions and render previews
         shell: bash
         run: |

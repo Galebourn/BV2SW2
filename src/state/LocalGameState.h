@@ -32,7 +32,7 @@ class IUserConfigReader;
 class LocalGameState : public GameState
 {
 	public:
-		LocalGameState();
+        explicit LocalGameState(int players = 0);
 		~LocalGameState() override;
 
 		// implementation of the State Interface
@@ -44,6 +44,8 @@ class LocalGameState : public GameState
 		std::shared_ptr<InputSource> createInputSource( IUserConfigReader& config, PlayerSide side, const DuelMatch* match );
 
 		bool mWinner;
+        int mLocalPlayers;
+        bool mHuman[2] = {false,false};
 
 		std::unique_ptr<ReplayRecorder> mRecorder;
 };

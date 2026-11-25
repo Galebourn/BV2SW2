@@ -38,6 +38,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "TextManager.h"
 #include "SpeedController.h"
 #include "InputManager.h"
+#include "UserConfig.h"
 #include "IScriptableComponent.h"
 
 /* implementation */
@@ -102,14 +103,28 @@ void MainMenuState::step_impl()
 	imgui.doImage(GEN_ID, Vector2(400.0, 300.0), "background");
 	imgui.doOverlay(GEN_ID, Vector2(0.0, 0.0), Vector2(800.0, 600.0));
 	#ifdef BLOBBY_MODERN_UI
-    imgui.doImage(GEN_ID, Vector2(400,145), "gfx/titel.bmp", Vector2(520,230));
-    const float left = 40, right = 440;
-    const float rows[] = {300,360,300,360,420,420,500};
-#else
+    imgui.doImage(GEN_ID,Vector2(400,125),"gfx/titel.bmp",Vector2(480,210));
+    if(imgui.doButton(GEN_ID,Vector2(40,270),"SINGLE PLAYER")) {
+#ifdef BLOBBY_SWITCH2
+        getInputMgr().controllers().resetPlayers();
+#endif
+        switchState(new ControllerSetupState(1));
+    }
+    if(imgui.doButton(GEN_ID,Vector2(440,270),"TWO PLAYERS")) switchState(new ControllerSetupState(2));
+    imgui.doText(GEN_ID,Vector2(40,309),"YOU AGAINST THE COMPUTER",TF_SMALL_FONT);
+    imgui.doText(GEN_ID,Vector2(440,309),"TOGETHER ON THIS SWITCH",TF_SMALL_FONT);
+    if(imgui.doButton(GEN_ID,Vector2(40,350),TextManager::MNU_LABEL_OPTIONS)) switchState(new OptionState());
+    if(imgui.doButton(GEN_ID,Vector2(440,350),"CONTROLLERS")) switchState(new ControllerSetupState());
+    if(imgui.doButton(GEN_ID,Vector2(40,410),TextManager::MNU_LABEL_ONLINE)) switchState(new OnlineSearchState());
+    if(imgui.doButton(GEN_ID,Vector2(440,410),TextManager::MNU_LABEL_LAN)) switchState(new LANSearchState());
+    if(imgui.doButton(GEN_ID,Vector2(40,470),TextManager::MNU_LABEL_REPLAY,TF_SMALL_FONT)) switchState(new ReplaySelectionState());
+    if(imgui.doButton(GEN_ID,Vector2(440,470),TextManager::MNU_LABEL_CREDITS,TF_SMALL_FONT)) switchState(new CreditsState());
+    if(imgui.doButton(GEN_ID,Vector2(40,530),TextManager::MNU_LABEL_EXIT,TF_SMALL_FONT)) getInputMgr().setEndBlobby();
+    return;
+#endif
     imgui.doImage(GEN_ID, Vector2(400.0, 175.0), "gfx/titel.bmp");
     const float left = 34, right = 34;
     const float rows[] = {300,340,380,420,460,500,540};
-#endif
 	if (imgui.doButton(GEN_ID, Vector2(right, rows[0]), TextManager::MNU_LABEL_ONLINE))
 	{
 		switchState( new OnlineSearchState() );
@@ -221,3 +236,85 @@ const char* CreditsState::getStateName() const
 	return "CreditsState";
 }
 
+
+void ControllerSetupState::init() {
+    UserConfig config; config.loadFile("config.xml");
+    mRumble=config.getBool("rumble",true);
+#ifdef BLOBBY_SWITCH2
+    auto& pads=getInputMgr().controllers();
+    pads.setRumble(mRumble);
+    pads.beginAssignment();
+    if(mPlayers==1) pads.ensurePlayer(LEFT_PLAYER);
+#endif
+}
+
+void ControllerSetupState::step_impl() {
+    auto& ui=getIMGUI();
+    ui.doCursor();
+    ui.doImage(GEN_ID,Vector2(400,300),"background");
+    ui.doOverlay(GEN_ID,Vector2(0,0),Vector2(800,600),Color(8,16,30),0.94f);
+    ui.doText(GEN_ID,Vector2(400,24),mPlayers==2 ? "TWO PLAYERS" : mPlayers==1 ? "SINGLE PLAYER" : "CONTROLLERS",TF_ALIGN_CENTER);
+    ui.doText(GEN_ID,Vector2(400,70),"PAIRED JOY-CONS OR PRO: PRESS L+R TO JOIN",TF_SMALL_FONT|TF_ALIGN_CENTER);
+    ui.doText(GEN_ID,Vector2(400,94),"SINGLE JOY-CON: HOLD SIDEWAYS AND PRESS SL+SR",TF_SMALL_FONT|TF_ALIGN_CENTER);
+#ifdef BLOBBY_SWITCH2
+    auto& pads=getInputMgr().controllers();
+    pads.joinPlayers(mPlayers==1 ? 1 : 2);
+#endif
+    for(int p=0;p<2;++p) {
+        const float x=24+p*400;
+        ui.doOverlay(GEN_ID,Vector2(x,135),Vector2(x+352,250),Color(16,30,55),1);
+        ui.doText(GEN_ID,Vector2(x+16,150),p==0 ? "PLAYER 1" : "PLAYER 2");
+        std::string name=p==1 && mPlayers==1 ? "COMPUTER OPPONENT" : "PRESS L+R OR SL+SR";
+#ifdef BLOBBY_SWITCH2
+        if(p==0 || mPlayers!=1) name=pads.playerName(p);
+#endif
+        ui.doText(GEN_ID,Vector2(x+16,205),name,TF_SMALL_FONT);
+    }
+    if(ui.doButton(GEN_ID,Vector2(40,280),"PAIRED / PRO",TF_SMALL_FONT)) {
+#ifdef BLOBBY_SWITCH2
+        pads.pairControllers();
+#endif
+        mMessage="PRESS L+R ON EACH PAIR OR PRO CONTROLLER";
+    }
+    if(ui.doButton(GEN_ID,Vector2(440,280),"SPLIT JOY-CONS",TF_SMALL_FONT)) {
+        mMessage="DETACH JOY-CONS, THEN PRESS SL+SR ON EACH";
+#ifdef BLOBBY_SWITCH2
+        if(!pads.splitPairs()) mMessage="COULD NOT SPLIT: TRY HOME - CONTROLLERS";
+#endif
+    }
+    ui.doText(GEN_ID,Vector2(400,326),mMessage,TF_SMALL_FONT|TF_ALIGN_CENTER);
+    if(ui.doButton(GEN_ID,Vector2(40,370),mRumble ? "RUMBLE: ON" : "RUMBLE: OFF",TF_SMALL_FONT)) {
+        mRumble=!mRumble;
+        UserConfig config; config.loadFile("config.xml"); config.setBool("rumble",mRumble); config.saveFile("config.xml");
+#ifdef BLOBBY_SWITCH2
+        pads.setRumble(mRumble);
+#endif
+    }
+    if(ui.doButton(GEN_ID,Vector2(440,370),"TEST RUMBLE",TF_SMALL_FONT)) {
+#ifdef BLOBBY_SWITCH2
+        pads.hit(LEFT_PLAYER); pads.hit(RIGHT_PLAYER);
+#endif
+    }
+    ui.doText(GEN_ID,Vector2(40,425),"MOVE: STICK   JUMP: RIGHT FACE BUTTON",TF_SMALL_FONT);
+    ui.doText(GEN_ID,Vector2(40,449),"PAUSE: PLUS / MINUS",TF_SMALL_FONT);
+    bool ready=true;
+#ifdef BLOBBY_SWITCH2
+    ready=pads.ready(mPlayers);
+#endif
+    if(mPlayers>0) {
+        if(ready) {
+            if(ui.doButton(GEN_ID,Vector2(200,515),"START MATCH",TF_SMALL_FONT)) {
+#ifdef BLOBBY_SWITCH2
+                pads.endAssignment();
+#endif
+                switchState(new LocalGameState(mPlayers));
+            }
+        } else ui.doText(GEN_ID,Vector2(160,515),"WAITING FOR PLAYERS",TF_SMALL_FONT);
+    }
+    if(ui.doButton(GEN_ID,Vector2(540,515),TextManager::LBL_CANCEL,TF_SMALL_FONT)) {
+#ifdef BLOBBY_SWITCH2
+        pads.endAssignment();
+#endif
+        switchState(new MainMenuState());
+    }
+}

@@ -118,6 +118,22 @@ int main(int argc, char** argv)
     };
     app.switchToState(std::unique_ptr<State>(new MainMenuState()));
     screen(); screen(); shot(app,"/tmp/bv2-menu-test/main-menu.bmp");
+    key(SDLK_RIGHT); screen(); key(SDLK_RETURN); screen();
+    assert(std::string(app.getCurrenStateName())=="ControllerSetupState");
+    screen(); shot(app,"/tmp/bv2-menu-test/two-players.bmp");
+    // Toggle rumble by touch, then check persistence instead of only drawing it.
+    touch(SDL_FINGERDOWN,80,380); screen();
+    touch(SDL_FINGERUP,80,380); screen();
+    UserConfig savedConfig; savedConfig.loadFile("config.xml");
+    assert(!savedConfig.getBool("rumble",true));
+    touch(SDL_FINGERDOWN,80,380); screen();
+    touch(SDL_FINGERUP,80,380); screen();
+    savedConfig.loadFile("config.xml"); assert(savedConfig.getBool("rumble",false));
+    key(SDLK_ESCAPE); screen();
+    assert(std::string(app.getCurrenStateName())=="MainMenuState");
+    screen(); key(SDLK_RETURN); screen();
+    assert(std::string(app.getCurrenStateName())=="ControllerSetupState");
+    screen(); shot(app,"/tmp/bv2-menu-test/single-player.bmp");
     app.switchToState(std::unique_ptr<State>(new OptionState()));
     screen(); screen(); shot(app,"/tmp/bv2-menu-test/player-options.bmp");
     app.switchToState(std::unique_ptr<State>(new GraphicOptionsState()));

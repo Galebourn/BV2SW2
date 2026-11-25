@@ -128,7 +128,7 @@ void OptionState::step_impl()
     }
     menu.doText(menu.getNextId(), Vector2(32,400), "MORE SETTINGS", TF_SMALL_FONT);
     if (menu.doButton(menu.getNextId(), Vector2(32,432), TextManager::OP_INPUT_OP, TF_SMALL_FONT))
-    { save(); switchState(new InputOptionsState()); }
+    { save(); switchState(new ControllerSetupState()); }
     if (menu.doButton(menu.getNextId(), Vector2(295,432), TextManager::OP_GFX_OP, TF_SMALL_FONT))
     { save(); switchState(new GraphicOptionsState()); }
     if (menu.doButton(menu.getNextId(), Vector2(558,432), TextManager::OP_MISC, TF_SMALL_FONT))

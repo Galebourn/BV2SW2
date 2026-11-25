@@ -30,6 +30,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "BlobbyDebug.h"
 #ifdef BLOBBY_SWITCH2
 #include "input_device/MenuNavigation.h"
+#include "input_device/SwitchControllers.h"
 #endif
 
 enum class KeyAction
@@ -100,6 +101,9 @@ class InputManager : public ObjectCounter<InputManager>
 		bool windowFocus() const;
 
 		SDL_Joystick* getJoystickById(int joyId);
+#ifdef BLOBBY_SWITCH2
+        SwitchControllers& controllers() { return mControllers; }
+#endif
 	private:
 #ifdef BLOBBY_MODERN_UI
         bool mMenuBack = false;
@@ -110,6 +114,7 @@ class InputManager : public ObjectCounter<InputManager>
 #endif
 #ifdef BLOBBY_SWITCH2
         MenuNavigation mMenuNavigation;
+        SwitchControllers mControllers;
         void updateMenuNavigation();
 #endif
 		// Keyboard

@@ -40,10 +40,17 @@ const unsigned int DOUBLE_CLICK_TIME = 200;
 InputManager::InputManager(BlobbyApp* app) : mApp(app)
 {
 	// joystick
+#ifndef BLOBBY_SWITCH2
 	SDL_InitSubSystem(SDL_INIT_JOYSTICK);
 	SDL_JoystickEventState(SDL_ENABLE);
+#endif
 	mJoystickPool = std::unique_ptr<JoystickPool>{new JoystickPool()};
+#ifndef BLOBBY_SWITCH2
 	mJoystickPool->probeJoysticks();
+#else
+    UserConfig config; config.loadFile("config.xml");
+    mControllers.setRumble(config.getBool("rumble",true));
+#endif
 
 	mRunning = true;
 	mWindowFocus = true;
@@ -58,6 +65,16 @@ InputManager::~InputManager() = default;
 
 std::unique_ptr<InputDevice> InputManager::beginGame(PlayerSide side)
 {
+#ifdef BLOBBY_SWITCH2
+    class NativeInput final : public InputDevice {
+        PlayerSide player;
+    public:
+        NativeInput(InputManager* mgr,PlayerSide p):InputDevice(mgr),player(p) {}
+        PlayerInputAbs transferInput() override { return mInputManager->controllers().input(player); }
+    };
+    mControllers.ensurePlayer(side);
+    return std::unique_ptr<InputDevice>(new NativeInput(this,side));
+#endif
 	// Move Mouse to center of window
 	int windowX = 0;
 	int windowY = 0;
@@ -364,22 +381,19 @@ void InputManager::updateInput()
 #ifdef BLOBBY_SWITCH2
 void InputManager::updateMenuNavigation()
 {
+    mControllers.update();
     int x = 0, y = 0;
     unsigned dpad = 0;
-    for (int i = 0; i < SDL_NumJoysticks(); ++i)
+    for (int i = 0; i < 9; ++i)
     {
-        SDL_Joystick* joystick = SDL_JoystickFromInstanceID(SDL_JoystickGetDeviceInstanceID(i));
-        if (!joystick || !SDL_JoystickGetAttached(joystick)) continue;
-        // devkitPro SDL2 Switch buttons 12..15: left, up, right, down.
-        unsigned buttons = 0;
-        for (int b = 0; b < 4; ++b)
-            if (SDL_JoystickGetButton(joystick, 12 + b)) buttons |= 1u << b;
-        const int sx = SDL_JoystickGetAxis(joystick, 0);
-        const int sy = SDL_JoystickGetAxis(joystick, 1);
-        // Prefer physical D-pad input over stick tilt on any controller.
-        if (buttons) { dpad = buttons; break; }
-        if (x == 0 && y == 0 && (std::abs(sx) >= 8000 || std::abs(sy) >= 8000))
-        { x = sx; y = sy; }
+        if(!mControllers.connected(i)) continue;
+        const auto& f=mControllers.frame(i);
+        const auto& old=mControllers.previous(i);
+        if(f.select && !old.select) { mSelect=true; mLastTextKey="return"; }
+        if(f.back && !old.back) mMenuBack=true;
+        if(f.pause && !old.pause) mExit=true;
+        if(f.dpad && !dpad) dpad=f.dpad;
+        if(x==0 && y==0 && (std::abs(f.x)>=8000 || std::abs(f.y)>=8000)) { x=f.x; y=f.y; }
     }
     using D = MenuNavigation::Direction;
     const D direction = mMenuNavigation.update(x, y, dpad, SDL_GetTicks());

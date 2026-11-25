@@ -30,11 +30,15 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "IUserConfigReader.h"
 #include "IMGUI.h"
 #include "FileSystem.h"
+#include "InputManager.h"
 
 /* implementation */
 void BlobbyApp::switchToState(std::unique_ptr<State> newState)
 {
 	assert(newState != nullptr);
+#ifdef BLOBBY_SWITCH2
+    mInputMgr->controllers().stopAll();
+#endif
 	mStateToSwitchTo = std::move(newState);
 	mStateToSwitchTo->setApp(this);
 }

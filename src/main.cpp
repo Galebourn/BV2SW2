@@ -139,7 +139,11 @@ int main(int argc, char* argv[])
 
 	DEBUG_STATUS("physfs initialised");
 
+#ifdef BLOBBY_SWITCH2
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
+#else
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK);
+#endif
 
 
 	DEBUG_STATUS("SDL initialised");

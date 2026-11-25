@@ -102,4 +102,17 @@ private:
 	float mYPosition;
 };
 
+// players==0 opens controller settings; 1/2 prepares a local match.
+class ControllerSetupState : public State {
+public:
+    explicit ControllerSetupState(int players=0):mPlayers(players) {}
+    void init() override;
+    void step_impl() override;
+    const char* getStateName() const override { return "ControllerSetupState"; }
+private:
+    int mPlayers;
+    bool mRumble=true;
+    std::string mMessage;
+};
+
 
