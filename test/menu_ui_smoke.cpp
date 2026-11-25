@@ -100,6 +100,17 @@ int main(int argc, char** argv)
     assert(volume>0.89f && volume<0.91f); // Released slider no longer follows touch.
     touch(SDL_FINGERUP,760,500); options();
     shot(app,"/tmp/bv2-menu-test/touch.bmp");
+    // Back must choose Cancel, not a No toggle elsewhere on an options page.
+    gui.resetSelection();
+    bool toggled=false,cancelled=false;
+    auto backMenu=[&]() {
+        app.getInputManager().updateInput(); gui.begin();
+        toggled=gui.doButton(10,Vector2(40,100),TextManager::LBL_NO);
+        cancelled=gui.doButton(20,Vector2(440,500),TextManager::LBL_CANCEL);
+        gui.end(renderer); renderer.refresh();
+    };
+    backMenu(); key(SDLK_ESCAPE); backMenu(); assert(cancelled && !toggled);
+
     // Render the actual shipped screens with the same renderer and font.
     auto screen=[&]() {
         app.getInputManager().updateInput(); gui.begin(); app.step();

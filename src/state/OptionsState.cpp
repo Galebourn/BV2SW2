@@ -110,7 +110,7 @@ void OptionState::step_impl()
     menu.doCursor();
     menu.doImage(menu.getNextId(), Vector2(400,300), "background");
     menu.doOverlay(menu.getNextId(), Vector2(0,0), Vector2(800,600), Color(8,16,30), 0.92f);
-    menu.doText(menu.getNextId(), Vector2(400,20), "PLAYERS & SETTINGS", TF_ALIGN_CENTER);
+    menu.doText(menu.getNextId(), Vector2(400,20), "PLAYER SETTINGS", TF_ALIGN_CENTER);
     for (int side=0; side<2; ++side)
     {
         const float x = side == 0 ? 32.0f : 432.0f;

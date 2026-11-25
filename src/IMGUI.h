@@ -98,6 +98,7 @@ class IMGUI : public ObjectCounter<IMGUI>
 #ifdef BLOBBY_MODERN_UI
         std::vector<MenuRect> mMenuItems, mPreviousMenuItems;
         bool mEditing = false;
+        int mBackButton = -1;
         bool mPointerClaimed = false;
         void trackMenuItem(int id, int kind, const Vector2& a, const Vector2& b);
         void navigateMenu();

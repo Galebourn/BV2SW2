@@ -144,6 +144,12 @@ void IMGUI::navigateMenu()
             mLastKeyAction = KeyAction::NONE;
         return;
     }
+    if (mLastKeyAction == KeyAction::BACK)
+    {
+        if (mBackButton != -1) { mActiveButton = mBackButton; mLastKeyAction = KeyAction::SELECT; }
+        else mLastKeyAction = KeyAction::NONE;
+        return;
+    }
     if (mLastKeyAction == KeyAction::SELECT && active->kind != BUTTON)
     {
         mEditing = true;
@@ -196,11 +202,24 @@ void IMGUI::end(RenderManager& renderer)
     for (const auto& item : mMenuItems) if (item.id == mActiveButton) found = true;
     if (!found && !mMenuItems.empty()) { mActiveButton = mMenuItems.front().id; mEditing = false; }
     mPreviousMenuItems = mMenuItems;
+    mBackButton = -1;
+    int backPriority = 0;
 #endif
 	int FontSize;
 	while (!mQueue->empty())
 	{
 		QueueObject& obj = mQueue->front();
+#ifdef BLOBBY_MODERN_UI
+        if (obj.type == BUTTON)
+        {
+            bool enabled = false;
+            for (const auto& item : mMenuItems) if (item.id == obj.id) enabled = true;
+            const int priority = obj.text == getText(TextManager::LBL_CANCEL) ? 3 :
+                                 obj.text == getText(TextManager::LBL_NO) ? 2 :
+                                 obj.text == getText(TextManager::LBL_OK) ? 1 : 0;
+            if (enabled && priority > backPriority) { mBackButton = obj.id; backPriority = priority; }
+        }
+#endif
 		switch (obj.type)
 		{
 			case IMAGE:
@@ -718,6 +737,7 @@ void IMGUI::resetSelection()
 #ifdef BLOBBY_MODERN_UI
     mMenuItems.clear();
     mPreviousMenuItems.clear();
+    mBackButton = -1;
     mEditing = false;
     mLastKeyAction = KeyAction::NONE;
     mPointerClaimed = true;
