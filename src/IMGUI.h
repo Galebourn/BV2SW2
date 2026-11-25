@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "Vector.h"
 #include "Global.h"
+#include "input_device/SpatialMenu.h"
 
 #include "RenderManager.h"
 #include "InputManager.h"
@@ -80,7 +81,12 @@ class IMGUI : public ObjectCounter<IMGUI>
 		bool doBlob(int id, const Vector2& position, const Color& col);
 
 		bool usingCursor() const;
-		void doInactiveMode(bool inactive) { mInactive = inactive; }
+		void doInactiveMode(bool inactive) {
+            mInactive = inactive;
+#ifdef BLOBBY_MODERN_UI
+            if (inactive) mMenuItems.clear();
+#endif
+        }
 
 		int getNextId() { return mIdCounter++; };
 
@@ -89,6 +95,13 @@ class IMGUI : public ObjectCounter<IMGUI>
 		void setTextMgr(std::string lang);
 
 	private:
+#ifdef BLOBBY_MODERN_UI
+        std::vector<MenuRect> mMenuItems, mPreviousMenuItems;
+        bool mEditing = false;
+        bool mPointerClaimed = false;
+        void trackMenuItem(int id, int kind, const Vector2& a, const Vector2& b);
+        void navigateMenu();
+#endif
 		int mActiveButton;
 		int mHeldWidget;
 		KeyAction mLastKeyAction;

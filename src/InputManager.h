@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include <SDL_keycode.h>
 
+#include "Global.h"
 #include "PlayerInput.h"
 #include "Vector.h"
 #include "BlobbyDebug.h"
@@ -71,6 +72,9 @@ class InputManager : public ObjectCounter<InputManager>
 		bool left() const;
 		bool right() const;
 		bool select() const;
+#ifdef BLOBBY_MODERN_UI
+        bool menuBack() const { return mMenuBack; }
+#endif
 		bool exit() const; // extension for mouse included, so that right click = exit
 
 		std::string getLastTextKey();
@@ -97,6 +101,13 @@ class InputManager : public ObjectCounter<InputManager>
 
 		SDL_Joystick* getJoystickById(int joyId);
 	private:
+#ifdef BLOBBY_MODERN_UI
+        bool mMenuBack = false;
+        bool mTouchPointer = false;
+        bool mTouchHeld = false;
+        long long mTouchFinger = 0;
+        Vector2 mTouchPosition;
+#endif
 #ifdef BLOBBY_SWITCH2
         MenuNavigation mMenuNavigation;
         void updateMenuNavigation();

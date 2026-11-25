@@ -114,13 +114,17 @@ std::unique_ptr<InputDevice> InputManager::beginGame(PlayerSide side)
 
 void InputManager::updateInput()
 {
-	mUp = false;
+#ifdef BLOBBY_MODERN_UI
+    mMenuBack = false;
+#endif
+	 mUp = false;
 	mDown = false;
 	mLeft = false;
 	mRight = false;
 	mSelect = false;
 	mExit = false;
 	mClick = false;
+    mDoubleClick = false;
 	mMouseWheelUp = false;
 	mMouseWheelDown = false;
 	mUnclick = false;
@@ -203,6 +207,28 @@ void InputManager::updateInput()
 				break;
 			// Workaround because SDL has a bug in Version 2.0.1,
 			// so that we can't use mouse here
+#ifdef BLOBBY_MODERN_UI
+            case SDL_FINGERDOWN:
+                if (!mTouchHeld)
+                {
+                    mTouchHeld = true;
+                    mTouchPointer = true;
+                    mTouchFinger = event.tfinger.fingerId;
+                    mTouchPosition = Vector2(event.tfinger.x * BASE_RESOLUTION_X, event.tfinger.y * BASE_RESOLUTION_Y);
+                    mClick = true;
+                    mDoubleClick = SDL_GetTicks() - mLastClickTime < DOUBLE_CLICK_TIME;
+                    mLastClickTime = SDL_GetTicks();
+                }
+                break;
+            case SDL_FINGERMOTION:
+            case SDL_FINGERUP:
+                if (mTouchHeld && mTouchFinger == event.tfinger.fingerId)
+                {
+                    mTouchPosition = Vector2(event.tfinger.x * BASE_RESOLUTION_X, event.tfinger.y * BASE_RESOLUTION_Y);
+                    if (event.type == SDL_FINGERUP) { mTouchHeld = false; mUnclick = true; }
+                }
+                break;
+#endif
 #if BLOBBY_ON_DESKTOP
 			case SDL_MOUSEBUTTONDOWN:
 				mLastMouseButton = event.button.button;
@@ -220,7 +246,7 @@ void InputManager::updateInput()
 						break;
 				}
 				break;
-#elif BLOBBY_ON_MOBILE
+#elif BLOBBY_ON_MOBILE && !defined(BLOBBY_MODERN_UI)
 			case SDL_FINGERDOWN:
 				mClick = true;
 
@@ -270,6 +296,9 @@ void InputManager::updateInput()
 				// Handle Buttons
 				else if (event.type == SDL_JOYBUTTONDOWN)
 				{
+#ifdef BLOBBY_MODERN_UI
+                    if (event.jbutton.button == 1) mMenuBack = true;
+#endif
 					joyAction.type = JoystickAction::BUTTON;
 					mLastJoyAction = joyAction.toString();
 				}
@@ -397,6 +426,9 @@ bool InputManager::exit() const
 
 Vector2 InputManager::position()
 {
+#ifdef BLOBBY_MODERN_UI
+    if (mTouchPointer) return mTouchPosition;
+#endif
 	int windowX = 0;
 	int windowY = 0;
 

@@ -21,6 +21,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #pragma once
 
 #include <string>
+#ifdef BLOBBY_SWITCH2
+#define BLOBBY_MODERN_UI
+#endif
 
 #if (defined __APPLE__)
 #include <TargetConditionals.h>

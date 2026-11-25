@@ -211,3 +211,10 @@ foreach(HEADER ${HEADERS})
 endforeach()
 
 target_link_libraries(test-compile-headers PRIVATE ${BLOBBY_COMMON_LIBS})
+
+option(BUILD_MENU_UI_TEST "Build native menu interaction and rendering test" OFF)
+if(BUILD_MENU_UI_TEST AND NOT SWITCH)
+  add_executable(menu-ui-smoke ../test/menu_ui_smoke.cpp ${blobby_SRC})
+  target_compile_definitions(menu-ui-smoke PRIVATE BLOBBY_MODERN_UI)
+  target_link_libraries(menu-ui-smoke ${BLOBBY_COMMON_LIBS} ${OPENGL_LIBRARIES})
+endif()

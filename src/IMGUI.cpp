@@ -105,10 +105,72 @@ void IMGUI::begin()
 	if (mInputManager->exit())
 		mLastKeyAction = KeyAction::BACK;
 
+#ifdef BLOBBY_MODERN_UI
+    if (!mPreviousMenuItems.empty() && mInputManager->menuBack())
+        mLastKeyAction = KeyAction::BACK;
+    navigateMenu();
+    mMenuItems.clear();
+    mPointerClaimed = false;
+#endif
 	mIdCounter = 0;
 }
 
-#ifdef BLOBBY_SWITCH2
+#ifdef BLOBBY_MODERN_UI
+void IMGUI::navigateMenu()
+{
+    const MenuRect* active = nullptr;
+    for (const auto& item : mPreviousMenuItems)
+        if (item.id == mActiveButton) active = &item;
+    if (!active) { mActiveButton = -1; mEditing = false; return; }
+    if (mEditing)
+    {
+        if (mLastKeyAction == KeyAction::BACK || mLastKeyAction == KeyAction::SELECT)
+        {
+            mEditing = false;
+            SDL_StopTextInput();
+            mLastKeyAction = KeyAction::NONE;
+        }
+        else if (active->kind == SELECTBOX || active->kind == CHAT)
+        {
+            // Legacy list code changes rows with Left/Right; adapt only while
+            // inside a list. Focus navigation outside lists remains spatial.
+            if (mLastKeyAction == KeyAction::UP) mLastKeyAction = KeyAction::LEFT;
+            else if (mLastKeyAction == KeyAction::DOWN) mLastKeyAction = KeyAction::RIGHT;
+            else if (mLastKeyAction == KeyAction::LEFT || mLastKeyAction == KeyAction::RIGHT)
+                mLastKeyAction = KeyAction::NONE;
+        }
+        else if (mLastKeyAction == KeyAction::UP || mLastKeyAction == KeyAction::DOWN)
+            mLastKeyAction = KeyAction::NONE;
+        return;
+    }
+    if (mLastKeyAction == KeyAction::SELECT && active->kind != BUTTON)
+    {
+        mEditing = true;
+        if (active->kind == EDITBOX) SDL_StartTextInput();
+        mLastKeyAction = KeyAction::NONE;
+        return;
+    }
+    int dx = 0, dy = 0;
+    if (mLastKeyAction == KeyAction::LEFT) dx = -1;
+    if (mLastKeyAction == KeyAction::RIGHT) dx = 1;
+    if (mLastKeyAction == KeyAction::UP) dy = -1;
+    if (mLastKeyAction == KeyAction::DOWN) dy = 1;
+    if (dx || dy)
+    {
+        mActiveButton = spatialMenuNext(mPreviousMenuItems, mActiveButton, dx, dy);
+        mLastKeyAction = KeyAction::NONE;
+    }
+}
+
+void IMGUI::trackMenuItem(int id, int kind, const Vector2& a, const Vector2& b)
+{
+    if (mInactive) return;
+    mMenuItems.push_back({id, kind, a.x, a.y, b.x, b.y});
+    if (mActiveButton == -1) mActiveButton = id;
+}
+#endif
+
+#ifdef BLOBBY_MODERN_UI
 namespace {
 void drawFocusFrame(RenderManager& renderer, const Vector2& a, const Vector2& b)
 {
@@ -123,6 +185,12 @@ void drawFocusFrame(RenderManager& renderer, const Vector2& a, const Vector2& b)
 
 void IMGUI::end(RenderManager& renderer)
 {
+#ifdef BLOBBY_MODERN_UI
+    bool found = false;
+    for (const auto& item : mMenuItems) if (item.id == mActiveButton) found = true;
+    if (!found && !mMenuItems.empty()) { mActiveButton = mMenuItems.front().id; mEditing = false; }
+    mPreviousMenuItems = mMenuItems;
+#endif
 	int FontSize;
 	while (!mQueue->empty())
 	{
@@ -138,14 +206,14 @@ void IMGUI::end(RenderManager& renderer)
 				break;
 
             case BUTTON:
-#ifdef BLOBBY_SWITCH2
-                if (!mInactive && obj.id == mActiveButton)
+#ifdef BLOBBY_MODERN_UI
                 {
                     const int size = obj.flags & TF_SMALL_FONT ? FONT_WIDTH_SMALL : FONT_WIDTH_NORMAL;
-                    const Vector2 a = obj.pos1 - Vector2(6, 5);
-                    const Vector2 b = obj.pos1 + Vector2(TextManager::getUTF8Length(obj.text) * size + 6, size + 5);
-                    renderer.drawOverlay(0.92f, a, b, Color(12, 24, 48));
-                    drawFocusFrame(renderer, a, b);
+                    const Vector2 a = obj.pos1 - Vector2(5, 4);
+                    const Vector2 b = obj.pos1 + Vector2(TextManager::getUTF8Length(obj.text) * size + 5, size + 4);
+                    renderer.drawOverlay(0.94f, a, b, Color(12, 24, 48));
+                    if (!mInactive && obj.id == mActiveButton) drawFocusFrame(renderer, a, b);
+                    else renderer.drawOverlay(0.8f, Vector2(a.x, b.y - 2), b, Color(65, 90, 125));
                 }
                 // Focus is evaluated after navigation, so only the final
                 // selected widget is highlighted (including when moving up).
@@ -186,6 +254,14 @@ void IMGUI::end(RenderManager& renderer)
 				renderer.drawOverlay((obj.type == SELECTBOX ? 0.5 : 0.3), obj.pos1, obj.pos2);
 				for (unsigned int c = 0; c < obj.entries.size(); c++)
 				{
+#ifdef BLOBBY_MODERN_UI
+                    if (c == static_cast<unsigned int>(obj.selected))
+                    {
+                        const Vector2 row(obj.pos1.x + 3, obj.pos1.y + c * FontSize + 3);
+                        renderer.drawOverlay(0.95f, row, Vector2(obj.pos2.x - 32, row.y + FontSize), Color(25, 60, 85));
+                        renderer.drawOverlay(1.0f, row, row + Vector2(3, FontSize), Color(255, 215, 40));
+                    }
+#endif
 					if( c == static_cast<unsigned int>(obj.selected) )
 						renderer.drawText( obj.entries[c], Vector2( obj.pos1.x + 5, obj.pos1.y + (c * FontSize) + 5), obj.flags | TF_HIGHLIGHT);
 					else
@@ -213,7 +289,7 @@ void IMGUI::end(RenderManager& renderer)
 			default:
 				break;
 		}
-#ifdef BLOBBY_SWITCH2
+#ifdef BLOBBY_MODERN_UI
         if (!mInactive && obj.id == mActiveButton)
         {
             switch (obj.type)
@@ -234,6 +310,25 @@ void IMGUI::end(RenderManager& renderer)
 #endif
 		mQueue->pop();
 	}
+#ifdef BLOBBY_MODERN_UI
+    if (!mMenuItems.empty())
+    {
+        renderer.drawOverlay(0.97f, Vector2(0, 580), Vector2(800, 600), Color(8, 16, 30));
+        std::string hint = "D-pad / stick: move   A: select   B: back   Touch: tap";
+        for (const auto& item : mMenuItems) if (item.id == mActiveButton)
+        {
+            if (mEditing && (item.kind == SELECTBOX || item.kind == CHAT))
+                hint = "Up / Down: choose   A / B: done   Touch: tap a row";
+            else if (mEditing && item.kind == SCROLLBAR)
+                hint = "Left / Right: adjust   A / B: done   Touch: drag";
+            else if (mEditing && item.kind == EDITBOX)
+                hint = "Type with the keyboard   A / B: done";
+            else if (item.kind != BUTTON)
+                hint = "D-pad / stick: move   A: adjust   B: back   Touch: tap";
+        }
+        renderer.drawText(hint, Vector2(16, 584), TF_SMALL_FONT);
+    }
+#endif
 #if BLOBBY_ON_DESKTOP
 	if (mDrawCursor)
 	{
@@ -300,6 +395,10 @@ void IMGUI::doOverlay(int id, const Vector2& pos1, const Vector2& pos2, const Co
 	obj.pos2 = pos2;
 	obj.col = col;
 	obj.alpha = alpha;
+#ifdef BLOBBY_MODERN_UI
+    if (col.r == 0 && col.g == 0 && col.b == 0)
+    { obj.col = Color(8, 16, 30); obj.alpha = std::max(alpha, 0.84f); }
+#endif
 	mQueue->push(obj);
 }
 
@@ -315,7 +414,7 @@ bool IMGUI::doButton(int id, const Vector2& position, const std::string& text, u
 	obj.id = id;
 	obj.pos1 = position;
 	obj.text = text;
-#ifdef BLOBBY_SWITCH2
+#ifdef BLOBBY_MODERN_UI
     obj.type = BUTTON;
 #else
     obj.type = TEXT;
@@ -335,6 +434,10 @@ bool IMGUI::doButton(int id, const Vector2& position, const std::string& text, u
 	{
 		obj.pos1.x -= textLength * fontSize;
 	}
+#ifdef BLOBBY_MODERN_UI
+    trackMenuItem(id, BUTTON, obj.pos1 - Vector2(5, 5), obj.pos1 + Vector2(textLength * fontSize + 5, fontSize + 5));
+#endif
+
 
 	if (!mInactive)
 	{
@@ -397,10 +500,15 @@ bool IMGUI::doButton(int id, const Vector2& position, const std::string& text, u
 				//todo: Workaround to catch backkey
 				clicked = true;
 				mActiveButton = id;
+#ifdef BLOBBY_MODERN_UI
+                mLastKeyAction = KeyAction::NONE;
+#endif
 			}
 		}
 
-		#if BLOBBY_ON_MOBILE
+		#if defined(BLOBBY_MODERN_UI)
+            const int tolerance = 4;
+		#elif BLOBBY_ON_MOBILE
 			const int tolerance = 3;
 		#else
 			const int tolerance = 0;
@@ -417,10 +525,21 @@ bool IMGUI::doButton(int id, const Vector2& position, const std::string& text, u
 				| TF_HIGHLIGHT
 			#endif
 			;
-			if (mInputManager->click())
+			if (mInputManager->click()
+#ifdef BLOBBY_MODERN_UI
+                && !mPointerClaimed
+#endif
+                )
 			{
+#ifdef BLOBBY_MODERN_UI
+                mPointerClaimed = true;
+                mEditing = false;
+#endif
 				clicked = true;
 				mActiveButton = id;
+#ifdef BLOBBY_MODERN_UI
+                mLastKeyAction = KeyAction::NONE;
+#endif
 			}
 		}
 	}
@@ -433,6 +552,11 @@ bool IMGUI::doButton(int id, const Vector2& position, const std::string& text, u
 bool IMGUI::doImageButton(int id, const Vector2& position, const Vector2& size, const std::string& image)
 {
 	doImage(id, position, image);
+#ifdef BLOBBY_MODERN_UI
+    trackMenuItem(id, BUTTON, position - size * 0.5f, position + size * 0.5f);
+    if (!mInactive && id == mActiveButton && mLastKeyAction == KeyAction::SELECT)
+    { mLastKeyAction = KeyAction::NONE; return true; }
+#endif
 
 	// React to mouse input.
 	if (mInputManager->click())
@@ -455,6 +579,9 @@ bool IMGUI::doScrollbar(int id, const Vector2& position, float& value)
 	obj.id = id;
 	obj.pos1 = position;
 	obj.type = SCROLLBAR;
+#ifdef BLOBBY_MODERN_UI
+    trackMenuItem(id, SCROLLBAR, position, position + Vector2(210, 26));
+#endif
 
 	bool deselected = false;
 
@@ -465,6 +592,7 @@ bool IMGUI::doScrollbar(int id, const Vector2& position, float& value)
 
 		mHeldWidget = 0;
 	}
+
 
 	if (!mInactive)
 	{
@@ -523,7 +651,9 @@ bool IMGUI::doScrollbar(int id, const Vector2& position, float& value)
 			}
 		}
 
-		#if BLOBBY_ON_MOBILE
+		#if defined(BLOBBY_MODERN_UI)
+            const int tolerance = 4;
+		#elif BLOBBY_ON_MOBILE
 			const int tolerance = 3;
 		#else
 			const int tolerance = 0;
@@ -557,6 +687,11 @@ bool IMGUI::doScrollbar(int id, const Vector2& position, float& value)
 		}
 	}
 
+#ifdef BLOBBY_MODERN_UI
+    if (mHeldWidget == id && !mInactive)
+        value = (mInputManager->position().x - position.x) / 200.0f;
+    if (mInputManager->unclick()) mHeldWidget = 0;
+#endif
 	value = value > 0.f ? (value < 1.f ? value : 1.f) : 0.f;
 	obj.pos2.x = value;
 
@@ -571,6 +706,14 @@ void IMGUI::resetSelection()
 	mInactive = false;
 	mActiveButton = -1;
 	mButtonReset = true;
+#ifdef BLOBBY_MODERN_UI
+    mMenuItems.clear();
+    mPreviousMenuItems.clear();
+    mEditing = false;
+    mLastKeyAction = KeyAction::NONE;
+    mPointerClaimed = true;
+    SDL_StopTextInput();
+#endif
 }
 
 bool IMGUI::doEditbox(int id, const Vector2& position, unsigned int length, std::string& text, unsigned& cpos, unsigned int flags, bool force_active)
@@ -594,6 +737,10 @@ bool IMGUI::doEditbox(int id, const Vector2& position, unsigned int length, std:
 		obj.pos1.x -= width / 2;
 	}
 
+#ifdef BLOBBY_MODERN_UI
+    trackMenuItem(id, EDITBOX, obj.pos1, obj.pos1 + Vector2(width, height));
+    if (cpos > text.size()) cpos = text.size();
+#endif
 	// React to mouse input.
 	Vector2 mousepos = mInputManager->position();
 	if (mousepos.x > obj.pos1.x &&
@@ -613,10 +760,14 @@ bool IMGUI::doEditbox(int id, const Vector2& position, unsigned int length, std:
 
 			mActiveButton = id;
 
+#ifdef BLOBBY_MODERN_UI
+            mEditing = true;
+#endif
 			// Show keyboard
 			SDL_StartTextInput();
 		}
 	}
+
 
 	if (!mInactive)
 	{
@@ -652,7 +803,11 @@ bool IMGUI::doEditbox(int id, const Vector2& position, unsigned int length, std:
 			mActiveButton = id;
 
 		// React to keyboard input.
-		if (id == mActiveButton || force_active)
+		if ((id == mActiveButton
+#ifdef BLOBBY_MODERN_UI
+            && mEditing
+#endif
+            ) || force_active)
 		{
 			obj.type = ACTIVEEDITBOX;
 			switch (mLastKeyAction)
@@ -822,10 +977,14 @@ SelectBoxAction IMGUI::doSelectbox(int id, const Vector2& pos1, const Vector2& p
 	obj.pos1 = pos1;
 	obj.pos2 = pos2;
 	obj.type = SELECTBOX;
+#ifdef BLOBBY_MODERN_UI
+    trackMenuItem(id, SELECTBOX, pos1, pos2);
+#endif
 	obj.flags = flags;
 
 	const int itemsPerPage = int(pos2.y - pos1.y - 10) / FontSize;
 	int first = (int)(selected / itemsPerPage)*itemsPerPage; //the first visible element in the list
+
 
 	if (!mInactive)
 	{
@@ -978,9 +1137,13 @@ void IMGUI::doChatbox(int id, const Vector2& pos1, const Vector2& pos2, const st
 	obj.pos1 = pos1;
 	obj.pos2 = pos2;
 	obj.type = CHAT;
+#ifdef BLOBBY_MODERN_UI
+    trackMenuItem(id, CHAT, pos1, pos2);
+#endif
 	obj.flags = flags;
 
 	const unsigned int itemsPerPage = int(pos2.y - pos1.y - 10) / FontSize;
+
 
 	if (!mInactive)
 	{

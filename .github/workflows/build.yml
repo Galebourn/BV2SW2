@@ -32,6 +32,29 @@ jobs:
         run: |
           g++ -std=c++11 -Wall -Wextra -Werror -Isrc test/menu_navigation.cpp -o /tmp/menu-navigation-test
           /tmp/menu-navigation-test
+          g++ -std=c++11 -Wall -Wextra -Werror -Isrc test/spatial_menu.cpp -o /tmp/spatial-menu-test
+          /tmp/spatial-menu-test
+      - name: Test menu interactions and render previews
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libsdl2-dev libphysfs-dev libboost-dev ninja-build python3-pil
+          cmake -S . -B build-ui -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_MENU_UI_TEST=ON -DCMAKE_CXX_FLAGS=-DBLOBBY_MODERN_UI -DCMAKE_DISABLE_FIND_PACKAGE_OpenGL=TRUE
+          cmake --build build-ui --target menu-ui-smoke --parallel 4
+          mkdir -p /tmp/bv2-menu-test
+          SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy ./build-ui/src/menu-ui-smoke
+          python3 - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          for p in Path('/tmp/bv2-menu-test').glob('*.bmp'):
+              Image.open(p).save(p.with_suffix('.png'))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: menu-previews
+          path: /tmp/bv2-menu-test/*.png
+
       - name: Build NRO and game data
         shell: bash
         run: docker build --progress=plain --file switch2/Dockerfile --output type=local,dest=dist . 2>&1 | tee build.log
