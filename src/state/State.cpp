@@ -101,16 +101,24 @@ void MainMenuState::step_impl()
 	imgui.doCursor();
 	imgui.doImage(GEN_ID, Vector2(400.0, 300.0), "background");
 	imgui.doOverlay(GEN_ID, Vector2(0.0, 0.0), Vector2(800.0, 600.0));
-	imgui.doImage(GEN_ID, Vector2(400.0, 175.0), "gfx/titel.bmp");
-	if (imgui.doButton(GEN_ID, Vector2(34, 300.0), TextManager::MNU_LABEL_ONLINE))
+	#ifdef BLOBBY_MODERN_UI
+    imgui.doImage(GEN_ID, Vector2(400,145), "gfx/titel.bmp", Vector2(520,230));
+    const float left = 40, right = 440;
+    const float rows[] = {300,360,300,360,420,420,500};
+#else
+    imgui.doImage(GEN_ID, Vector2(400.0, 175.0), "gfx/titel.bmp");
+    const float left = 34, right = 34;
+    const float rows[] = {300,340,380,420,460,500,540};
+#endif
+	if (imgui.doButton(GEN_ID, Vector2(right, rows[0]), TextManager::MNU_LABEL_ONLINE))
 	{
 		switchState( new OnlineSearchState() );
 	}
-	if (imgui.doButton(GEN_ID, Vector2(34, 340.0), TextManager::MNU_LABEL_LAN))
+	if (imgui.doButton(GEN_ID, Vector2(right, rows[1]), TextManager::MNU_LABEL_LAN))
 	{
 		switchState( new LANSearchState() );
 	}
-	if (imgui.doButton(GEN_ID, Vector2(34.0, 380.0), TextManager::MNU_LABEL_START))
+	if (imgui.doButton(GEN_ID, Vector2(left, rows[2]), TextManager::MNU_LABEL_START))
 	{
 		try
 		{
@@ -125,22 +133,22 @@ void MainMenuState::step_impl()
 		}
 	}
 
-	if (imgui.doButton(GEN_ID, Vector2(34.0, 420.0), TextManager::MNU_LABEL_OPTIONS))
+	if (imgui.doButton(GEN_ID, Vector2(left, rows[3]), TextManager::MNU_LABEL_OPTIONS))
 	{
 		switchState(new OptionState());
 	}
 
-	if (imgui.doButton(GEN_ID, Vector2(34.0, 460.0), TextManager::MNU_LABEL_REPLAY))
+	if (imgui.doButton(GEN_ID, Vector2(left, rows[4]), TextManager::MNU_LABEL_REPLAY))
 	{
 		switchState(new ReplaySelectionState());
 	}
 
-	if (imgui.doButton(GEN_ID, Vector2(34.0, 500.0), TextManager::MNU_LABEL_CREDITS))
+	if (imgui.doButton(GEN_ID, Vector2(right, rows[5]), TextManager::MNU_LABEL_CREDITS))
 	{
 		switchState(new CreditsState());
 	}
 
-	if (imgui.doButton(GEN_ID, Vector2(34.0, 540.0), TextManager::MNU_LABEL_EXIT))
+	if (imgui.doButton(GEN_ID, Vector2(left, rows[6]), TextManager::MNU_LABEL_EXIT))
 	{
 		getInputMgr().setEndBlobby();
 	}

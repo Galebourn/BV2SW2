@@ -168,6 +168,11 @@ void IMGUI::trackMenuItem(int id, int kind, const Vector2& a, const Vector2& b)
     if (mInactive) return;
     mMenuItems.push_back({id, kind, a.x, a.y, b.x, b.y});
     if (mActiveButton == -1) mActiveButton = id;
+    // Initial selection follows visual reading order, not function-call order.
+    if (mPreviousMenuItems.empty())
+        for (const auto& item : mMenuItems)
+            if (item.id == mActiveButton && (a.y < item.y1 || (a.y == item.y1 && a.x < item.x1)))
+            { mActiveButton = id; break; }
 }
 #endif
 
@@ -495,8 +500,11 @@ bool IMGUI::doButton(int id, const Vector2& position, const std::string& text, u
 		if (mLastKeyAction == KeyAction::BACK)
 		{
 			if ((text == getText(TextManager::LBL_CANCEL)) ||
-			    (text == getText(TextManager::LBL_NO)) ||
-			    (text == getText(TextManager::MNU_LABEL_EXIT)))
+                (text == getText(TextManager::LBL_NO))
+#ifndef BLOBBY_MODERN_UI
+                || (text == getText(TextManager::MNU_LABEL_EXIT))
+#endif
+                )
 			{
 				//todo: Workaround to catch backkey
 				clicked = true;

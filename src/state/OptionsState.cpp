@@ -105,6 +105,40 @@ void OptionState::save()
 
 void OptionState::step_impl()
 {
+#ifdef BLOBBY_MODERN_UI
+    auto& menu = getIMGUI();
+    menu.doCursor();
+    menu.doImage(menu.getNextId(), Vector2(400,300), "background");
+    menu.doOverlay(menu.getNextId(), Vector2(0,0), Vector2(800,600), Color(8,16,30), 0.92f);
+    menu.doText(menu.getNextId(), Vector2(400,20), "PLAYERS & SETTINGS", TF_ALIGN_CENTER);
+    for (int side=0; side<2; ++side)
+    {
+        const float x = side == 0 ? 32.0f : 432.0f;
+        menu.doOverlay(menu.getNextId(), Vector2(x-12,60), Vector2(x+350,382), Color(12,24,48), 0.94f);
+        menu.doOverlay(menu.getNextId(), Vector2(x-12,60), Vector2(x+350,63), side == 0 ? Color(80,145,255) : Color(255,100,140), 1.0f);
+        menu.doText(menu.getNextId(), Vector2(x,68), side == 0 ? "PLAYER 1" : "PLAYER 2", TF_SMALL_FONT);
+        menu.doEditbox(menu.getNextId(), Vector2(x,88), 13, mPlayerName[side], mPlayerNamePosition[side]);
+        menu.doText(menu.getNextId(), Vector2(x,134), "HUMAN / BOT", TF_SMALL_FONT);
+        menu.doSelectbox(menu.getNextId(), Vector2(x,156), Vector2(x+322,310), mScriptNames, mPlayerOptions[side]);
+        menu.doText(menu.getNextId(), Vector2(x,326), TextManager::OP_DIFFICULTY, TF_SMALL_FONT);
+        float strength = 1.0f - mBotStrength[side] / 25.0f;
+        menu.doScrollbar(menu.getNextId(), Vector2(x,350), strength);
+        mBotStrength[side] = static_cast<unsigned>((1.0f-strength)*25.0f+0.5f);
+        menu.doText(menu.getNextId(), Vector2(x+225,355), strength>0.66f ? TextManager::OP_STRONG : (strength>0.33f ? TextManager::OP_MEDIUM : TextManager::OP_WEAK), TF_SMALL_FONT);
+    }
+    menu.doText(menu.getNextId(), Vector2(32,400), "MORE SETTINGS", TF_SMALL_FONT);
+    if (menu.doButton(menu.getNextId(), Vector2(32,432), TextManager::OP_INPUT_OP, TF_SMALL_FONT))
+    { save(); switchState(new InputOptionsState()); }
+    if (menu.doButton(menu.getNextId(), Vector2(295,432), TextManager::OP_GFX_OP, TF_SMALL_FONT))
+    { save(); switchState(new GraphicOptionsState()); }
+    if (menu.doButton(menu.getNextId(), Vector2(558,432), TextManager::OP_MISC, TF_SMALL_FONT))
+    { save(); switchState(new MiscOptionsState()); }
+    if (menu.doButton(menu.getNextId(), Vector2(280,520), TextManager::LBL_OK, TF_ALIGN_CENTER))
+    { save(); switchState(new MainMenuState()); }
+    if (menu.doButton(menu.getNextId(), Vector2(520,520), TextManager::LBL_CANCEL, TF_ALIGN_CENTER))
+        switchState(new MainMenuState());
+    return;
+#endif
 	const int MAX_BOT_DELAY = 25;		// 25 frames = 0.33s (gamespeed: normal)
 
 	IMGUI& imgui = getIMGUI();
@@ -1086,4 +1120,3 @@ void MiscOptionsState::init()
 	mNetworkSide = mOptionConfig.getInteger("network_side");
 	mLanguage = mOptionConfig.getString("language");
 }
-
