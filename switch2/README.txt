@@ -1,29 +1,27 @@
 Blobby Volley 2 for Switch 2 / kaiHEN
-Status: compiled successfully, hardware testing pending.
+Modern menus update, 25 November 2026.
+Initial version confirmed running on Switch 2; this revision needs hardware testing.
+LAN and online play remain untested.
 
 Download:
-https://github.com/Galebourn/BV2SW2/actions/runs/45497233311/artifacts/14970395413
+https://github.com/Galebourn/BV2SW2/actions/runs/45713417353/artifacts/15068302791
 
-Copy the extracted switch/blobby2 folder to /switch/blobby2 on the SD card.
-Keep data/ next to blobby.nro. Launch through kaiHEN's native-game homebrew menu.
-Left stick: move. A: jump/select. D-pad: menu. Plus: pause/back.
-First-run default is human versus AI. Controller mappings need hardware testing.
-Preferences and replays are created under /switch/blobby2/user.
+Copy switch/blobby2 to /switch/blobby2 on your SD card.
+Existing users: replace blobby.nro only and keep data/ and user/.
+Launch through kaiHEN's native-game homebrew menu.
 
-Source commit: fe3a039ab4f41c01a45eedbb4b3f91b00180eed7
-Build: https://github.com/Galebourn/BV2SW2/actions/runs/45497233311
-Checks passed: cross-compile, link, NRO generation, NRO header, asset presence.
-ZIP SHA-256: af1a04505c5caddf633445706a035828c6f40219d661a5d36e7a1f0099e72071
+Menus: stick/D-pad follows visible layout. A selects or starts editing.
+Editing lists: Up/Down. Editing sliders: Left/Right. A/B finishes editing.
+B returns/cancels. Touch taps buttons/list rows and drags sliders.
+Gameplay: left stick moves, A jumps, Plus pauses.
+Preferences/replays: /switch/blobby2/user.
 
-Build from repository root:
+Source commit: ad422cc4412698b3a8520876be89faba2484fad3
+Build: https://github.com/Galebourn/BV2SW2/actions/runs/45713417353
+Passed: navigation and native SDL interaction tests, cross-compile, NRO generation.
+ZIP SHA-256: ffb11e431a26f65982187e8ac2cf94d6ea25f41a9e35c28f97aec1f1e1d5db20
+
+Build:
 docker build --file switch2/Dockerfile --output type=local,dest=dist .
 
-The historical switch2-port.patch is only the initial bootstrap patch.
-Current source files include the subsequent input-settings compilation fix.
-See the repository README, COPYING, AUTHORS, and switch2/ounce-LICENSE.
-
-Menu update 2026-11-24: dominant-axis stick navigation, controlled repeat,
-gold focus outline and dark button background. Navigation regression tests pass.
-The initial build runs on the tester's Switch 2. This update needs hardware
-confirmation; LAN and online play are untested.
-Existing installations: replace blobby.nro only; keep data/ and user/.
+See README.md, COPYING, AUTHORS and switch2/ounce-LICENSE.
