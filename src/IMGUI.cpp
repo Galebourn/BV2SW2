@@ -65,6 +65,7 @@ IMGUI::IMGUI(InputManager* inputMgr) : mInputManager(inputMgr)
 {
 	assert(mInputManager);
 	mQueue.reset(new RenderQueue);
+    mDrawCursor = false;
 	mActiveButton = -1;
 	mHeldWidget = 0;
 	mLastKeyAction = KeyAction::NONE;

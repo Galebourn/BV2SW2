@@ -3,6 +3,8 @@
 #include <memory>
 #include <string>
 #include "BlobbyApp.h"
+#include "SoundManager.h"
+#include "state/OptionsState.h"
 #include "FileSystem.h"
 #include "UserConfig.h"
 #include "SpeedController.h"
@@ -98,5 +100,16 @@ int main(int argc, char** argv)
     assert(volume>0.89f && volume<0.91f); // Released slider no longer follows touch.
     touch(SDL_FINGERUP,760,500); options();
     shot(app,"/tmp/bv2-menu-test/touch.bmp");
+    // Render the actual shipped screens with the same renderer and font.
+    auto screen=[&]() {
+        app.getInputManager().updateInput(); gui.begin(); app.step();
+        gui.end(renderer); renderer.refresh();
+    };
+    app.switchToState(std::unique_ptr<State>(new MainMenuState()));
+    screen(); screen(); shot(app,"/tmp/bv2-menu-test/main-menu.bmp");
+    app.switchToState(std::unique_ptr<State>(new OptionState()));
+    screen(); screen(); shot(app,"/tmp/bv2-menu-test/player-options.bmp");
+    app.switchToState(std::unique_ptr<State>(new GraphicOptionsState()));
+    screen(); screen(); shot(app,"/tmp/bv2-menu-test/graphics-options.bmp");
     return 0;
 }
