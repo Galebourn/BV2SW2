@@ -128,7 +128,8 @@ int main(int argc, char** argv)
     assert(!savedConfig.getBool("rumble",true));
     touch(SDL_FINGERDOWN,80,380); screen();
     touch(SDL_FINGERUP,80,380); screen();
-    savedConfig.loadFile("config.xml"); assert(savedConfig.getBool("rumble",false));
+    UserConfig savedEnabled; savedEnabled.loadFile("config.xml");
+    assert(savedEnabled.getBool("rumble",false));
     key(SDLK_ESCAPE); screen();
     assert(std::string(app.getCurrenStateName())=="MainMenuState");
     screen(); key(SDLK_RETURN); screen();
@@ -140,3 +141,4 @@ int main(int argc, char** argv)
     screen(); screen(); shot(app,"/tmp/bv2-menu-test/graphics-options.bmp");
     return 0;
 }
+
