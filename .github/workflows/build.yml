@@ -69,6 +69,12 @@ jobs:
           p = Path('dist/switch/blobby2/blobby.nro')
           assert p.read_bytes()[16:20] == b'NRO0'
           assert Path('dist/switch/blobby2/data/gfx.zip').is_file()
+          import zipfile, struct
+          with zipfile.ZipFile('dist/switch/blobby2/data/backgrounds.zip') as z:
+              for name in ('lagoon','sunset','moonlight','jungle-island'):
+                  b = z.read('backgrounds/'+name+'.bmp')
+                  assert b[:2] == b'BM'
+                  assert struct.unpack_from('<ii',b,18) == (800,600)
           PY
       - uses: actions/upload-artifact@v4
         if: always()

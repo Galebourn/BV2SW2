@@ -10,6 +10,7 @@
 #include "SpeedController.h"
 #include "IMGUI.h"
 #include "state/State.h"
+#include "state/LocalGameState.h"
 
 static void key(SDL_Keycode code)
 {
@@ -139,6 +140,15 @@ int main(int argc, char** argv)
     screen(); screen(); shot(app,"/tmp/bv2-menu-test/player-options.bmp");
     app.switchToState(std::unique_ptr<State>(new GraphicOptionsState()));
     screen(); screen(); shot(app,"/tmp/bv2-menu-test/graphics-options.bmp");
+    app.switchToState(std::unique_ptr<State>(new LocalGameState(2)));
+    screen(); screen();
+    assert(std::string(app.getCurrenStateName())=="LocalGameState");
+    for(const std::string name:{"lagoon","sunset","moonlight","jungle-island"}) {
+        assert(renderer.setBackground("backgrounds/"+name+".bmp"));
+        screen();
+        const std::string path="/tmp/bv2-menu-test/field-"+name+".bmp";
+        shot(app,path.c_str());
+    }
     return 0;
 }
 

@@ -1,0 +1,21 @@
+Beach artwork for Blobby Volley 2 Switch 2
+
+Created with the built-in image_gen tool. Final playable assets are 800x600 RGB BMP files in data/backgrounds. The original strand1/strand2 fields remain available.
+
+Scenes: Lagoon, Sunset, Moonlight, Jungle Island (inspired by the user's supplied island screenshot).
+The centre pole and flat mesh-shaped net shadow follow the approved original game perspective. No visible physical net is drawn. Physics is unchanged.
+
+Final generation/edit prompts:
+
+lagoon
+Image 1 is EDIT TARGET, the new lagoon beach. Image 2 is GEOMETRY REFERENCE, the original Blobby Volley field. Keep Image1's scenery, islands, sand, sky and palms. Correct ONLY central pole and its net shadow to faithfully match Image2's original game geometry. The net itself is invisible, precisely edge-on behind pole. The NET'S SHADOW is clearly visible as a dark mesh-patterned trapezoid projected onto flat sand to RIGHT of pole, EXACTLY as in Image2. Copy the reference net-shadow silhouette, mesh perspective, location and scale. At an 800x600 coordinate scale, shadow corners approximately (403,393),(456,410),(521,578),(443,597). It does NOT start at the pole top; upper shadow begins on sand around y393. Net shadow has a thick outer border with grid lines inside, sand remains visible through it. Remove the current long thin pole shadow at bottom of Image1 and replace with correct reference NET SHADOW. Pole centre x400 cap y277, radius7. NO physical upright mesh or diagonal rails. No changes elsewhere, no text.
+
+sunset
+Image 1 is EDIT TARGET, sunset beach. Image 2 is APPROVED GAME GEOMETRY reference. Preserve Image1 sunset scenery and colors. Add to Image1 the exact same pole and NET SHADOW geometry shown in Image2. Net is invisible edge-on behind pole. NET'S SHADOW is a recognisable grid trapezoid lying FLAT ON SAND on right of pole; copy silhouette, mesh perspective, placement and scale from Image2. On 800x600 coordinate scale shadow corners roughly (403,393),(456,410),(521,578),(443,597), upper edge on sand far below pole top, dark border and mesh lines with sand visible through gaps. Pole centre x400 cap y277 radius7. Remove existing tiny pole-only shadow. Do not draw physical upright netting or any rails. Sun and scenery otherwise unchanged. No text.
+
+moonlight
+Image1 EDIT TARGET moonlit beach. Image2 APPROVED GAME GEOMETRY reference. Preserve Image1 island, moon, palms, sand and night colors. REMOVE the entire physical upright net, diagonal rails and mesh to right of pole in Image1 and fill region with uninterrupted sand. Then reproduce Image2 EXACT net SHADOW geometry ON FLAT SAND. Net itself is invisible edge-on behind pole. Shadow is dark recognisable grid trapezoid lying flat on ground with upper edge much BELOW pole cap. At 800x600 scale shadow corners approx (403,393),(456,410),(521,578),(443,597); dark frame and fine grid through which sand shows. Copy shape/perspective from Image2. Central pole x400 cap y277 radius7 extends beyond bottom. NO visible physical netting suspended from pole top. No text, no other changes.
+
+jungle-island
+Create a new 4:3 Blobby Volley 2 game background using IMAGE1 as island inspiration, IMAGE2 as strict playable field layout reference. Island: recognisable towering craggy peak, mossy rounded rock formation suggesting a gorilla head, stacked lush cliff terraces, dense broad-leaf palms, small tropical timber house high on terrace, turquoise water, vivid clear sky and fluffy white clouds, charming high-quality colorful 3D platform game style. Recompose as seen FROM A SANDY VOLLEYBALL BEACH looking across a narrow turquoise lagoon toward the island: island fills upper half but empty pale sand occupies lower 45% for moving players. No people, no ball, no readable lettering, no UI or logos. CRITICAL preserve Image2 EXACT centre pole and mesh-shaped NET SHADOW FLAT ON SAND. At 800x600 coordinate scale: pole x400 rounded top y277 radius7 extending beyond bottom, net is completely INVISIBLE edge-on behind pole. Shadow mesh trapezoid to right approximately (403,393),(456,410),(521,578),(443,597). This is dark shadow on ground, not physical net, do not draw any mesh suspended from pole top. Keep this game geometry and spacious playable foreground while transforming scenery to supplied island.
+
