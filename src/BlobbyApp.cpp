@@ -133,9 +133,11 @@ void BlobbyApp::setupRenderManager(const IUserConfigReader& config) {
 	bool fullscreen = config.getBool("fullscreen");
 	bool shadows = config.getBool("show_shadow");
 	mRenderMgr->init(BASE_RESOLUTION_X, BASE_RESOLUTION_Y, fullscreen);
+    mRenderMgr->setDisplayMode(config.getInteger("display_mode",0));
 	mRenderMgr->showShadow(shadows);
 
 	std::string bg = std::string("backgrounds/") + config.getString("background");
 	if ( FileSystem::getSingleton().exists(bg) )
 		mRenderMgr->setBackground(bg);
 }
+

@@ -1,4 +1,4 @@
-﻿/*=============================================================================
+/*=============================================================================
 Blobby Volley 2
 Copyright (C) 2006 Jonathan Sieber (jonathan_sieber@yahoo.de)
 Copyright (C) 2006 Daniel Knobe (daniel-knobe@web.de)
@@ -25,6 +25,17 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "FileRead.h"
 #include "Blood.h"
 #include "IUserConfigReader.h"
+#include "DisplayLayout.h"
+
+Vector2 RenderManager::normalizedToGame(float x,float y) const {
+    if(getDisplayMode()==0) return Vector2(x*800.0f,y*600.0f);
+    int w=0,h=0; SDL_GetWindowSize(mWindow,&w,&h);
+    if(w<=0 || h<=0) return Vector2(-10000,-10000);
+    DisplayLayout layout{float(w),float(h)};
+    // Keep out-of-bounds coordinates for slider drags. InputManager rejects
+    // initial clicks outside the court instead of clamping them onto buttons.
+    return Vector2(layout.worldX(x*w),layout.worldY(y*h));
+}
 
 /* implementation */
 #define INVALID_FONT_INDEX -1
@@ -349,3 +360,4 @@ Color RenderManager::getOscillationColor() const
 		int((std::sin(time*3.5) + 1.0) * 128)
 	};
 }
+

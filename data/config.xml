@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <userconfig>
+    <var name="display_mode" value="0"/>
     <var name="rumble" value="true"/>
 	<var name="device" value="SDL"/>
 	<var name="fullscreen" value="false"/>

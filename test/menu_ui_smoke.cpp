@@ -11,6 +11,7 @@
 #include "IMGUI.h"
 #include "state/State.h"
 #include "state/LocalGameState.h"
+#include "DisplayLayout.h"
 
 static void key(SDL_Keycode code)
 {
@@ -149,6 +150,49 @@ int main(int argc, char** argv)
         const std::string path="/tmp/bv2-menu-test/field-"+name+".bmp";
         shot(app,path.c_str());
     }
+
+    // Presentation modes at a real 1920x1080 output, with the same game world.
+    SDL_SetWindowSize(app.getWindow(),1920,1080);
+    auto* sdl=SDL_GetRenderer(app.getWindow());
+    auto outputShot=[&](const char* path) {
+        SDL_Texture* target=SDL_GetRenderTarget(sdl);
+        SDL_SetRenderTarget(sdl,nullptr);
+        SDL_Surface* pixels=SDL_CreateRGBSurfaceWithFormat(0,1920,1080,32,SDL_PIXELFORMAT_ARGB8888);
+        assert(pixels && SDL_RenderReadPixels(sdl,nullptr,pixels->format->format,pixels->pixels,pixels->pitch)==0);
+        assert(SDL_SaveBMP(pixels,path)==0);
+        SDL_FreeSurface(pixels); SDL_SetRenderTarget(sdl,target);
+    };
+    for(int mode=0;mode<3;++mode) {
+        renderer.setDisplayMode(mode); screen();
+        const std::string path="/tmp/bv2-menu-test/display-mode-"+std::to_string(mode)+".bmp";
+        outputShot(path.c_str());
+        auto centre=renderer.normalizedToGame(0.5f,0.5f);
+        assert(std::abs(centre.x-400)<0.01f && std::abs(centre.y-300)<0.01f);
+        auto edge=renderer.normalizedToGame(0.05f,0.5f);
+        assert(mode==0 ? edge.x>0 : edge.x<0);
+    }
+    renderer.setDisplayMode(0);
+    app.switchToState(std::unique_ptr<State>(new GraphicOptionsState())); screen(); screen();
+    auto tapGame=[&](float x,float y) {
+        float nx=x/800.0f;
+        if(renderer.getDisplayMode()!=0) nx=(240+x*1.8f)/1920;
+        touch(SDL_FINGERDOWN,nx*800,y); screen();
+        touch(SDL_FINGERUP,nx*800,y); screen();
+    };
+    tapGame(480,44); assert(renderer.getDisplayMode()==1);
+    tapGame(480,44); assert(renderer.getDisplayMode()==2);
+    // Touching the decorative region must not be clamped into an edge button.
+    touch(SDL_FINGERDOWN,20,44); screen(); touch(SDL_FINGERUP,20,44); screen();
+    assert(renderer.getDisplayMode()==2);
+    tapGame(450,540); assert(renderer.getDisplayMode()==0); // Cancel restores.
+    app.switchToState(std::unique_ptr<State>(new GraphicOptionsState())); screen(); screen();
+    tapGame(480,44); assert(renderer.getDisplayMode()==1);
+    tapGame(250,540);
+    UserConfig displaySaved; displaySaved.loadFile("config.xml");
+    assert(displaySaved.getInteger("display_mode",-1)==1);
+    app.switchToState(std::unique_ptr<State>(new GraphicOptionsState())); screen(); screen();
+    assert(renderer.getDisplayMode()==1);
+    outputShot("/tmp/bv2-menu-test/display-options.bmp");
     return 0;
 }
 

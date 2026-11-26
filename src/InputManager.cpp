@@ -231,7 +231,7 @@ void InputManager::updateInput()
                     mTouchHeld = true;
                     mTouchPointer = true;
                     mTouchFinger = event.tfinger.fingerId;
-                    mTouchPosition = Vector2(event.tfinger.x * BASE_RESOLUTION_X, event.tfinger.y * BASE_RESOLUTION_Y);
+                    mTouchPosition = Vector2(event.tfinger.x, event.tfinger.y);
                     mClick = true;
                     mDoubleClick = SDL_GetTicks() - mLastClickTime < DOUBLE_CLICK_TIME;
                     mLastClickTime = SDL_GetTicks();
@@ -241,7 +241,7 @@ void InputManager::updateInput()
             case SDL_FINGERUP:
                 if (mTouchHeld && mTouchFinger == event.tfinger.fingerId)
                 {
-                    mTouchPosition = Vector2(event.tfinger.x * BASE_RESOLUTION_X, event.tfinger.y * BASE_RESOLUTION_Y);
+                    mTouchPosition = Vector2(event.tfinger.x, event.tfinger.y);
                     if (event.type == SDL_FINGERUP) { mTouchHeld = false; mUnclick = true; }
                 }
                 break;
@@ -438,26 +438,27 @@ bool InputManager::exit() const
 	return mExit;
 }
 
-Vector2 InputManager::position()
+Vector2 InputManager::position() const
 {
 #ifdef BLOBBY_MODERN_UI
-    if (mTouchPointer) return mTouchPosition;
+    if (mTouchPointer) return mApp->getRenderManager().normalizedToGame(mTouchPosition.x,mTouchPosition.y);
 #endif
 	int windowX = 0;
 	int windowY = 0;
 
-	SDL_GetMouseState(&mMouseX, &mMouseY);
+    int mouseX=0,mouseY=0;
+	SDL_GetMouseState(&mouseX, &mouseY);
 
 	SDL_GetWindowSize(mApp->getWindow(), &windowX, &windowY);
-	mMouseX = (int)((((float)mMouseX) * ((float)BASE_RESOLUTION_X)) / windowX);
-	mMouseY = (int)((((float)mMouseY) * ((float)BASE_RESOLUTION_Y)) / windowY);
-
-	return Vector2(mMouseX, mMouseY);
+    if(windowX<=0 || windowY<=0) return Vector2(-10000,-10000);
+    return mApp->getRenderManager().normalizedToGame(float(mouseX)/windowX,float(mouseY)/windowY);
 }
 
 bool InputManager::click() const
 {
-	return mClick;
+    if(!mClick) return false;
+    const auto p=position();
+    return p.x>=0 && p.x<800 && p.y>=0 && p.y<600;
 }
 
 bool InputManager::doubleClick() const
@@ -569,3 +570,4 @@ bool InputManager::isJoyActionActive(const JoystickAction& action) const
 	}
 	return false;
 }
+

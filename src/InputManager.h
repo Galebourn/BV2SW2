@@ -84,7 +84,7 @@ class InputManager : public ObjectCounter<InputManager>
 		std::string getLastJoyAction() const;
 
 		// For GUI navigation (Mouse)
-		Vector2 position();
+		Vector2 position() const;
 		bool click() const;
 		bool doubleClick() const;
 		bool mouseWheelUp() const;
@@ -152,3 +152,4 @@ class InputManager : public ObjectCounter<InputManager>
 		BlobbyApp* mApp;
 		std::unique_ptr<JoystickPool> mJoystickPool;
 };
+

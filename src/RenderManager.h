@@ -111,6 +111,10 @@ class RenderManager : public ObjectCounter<RenderManager>
 		// This swaps the screen buffers and should be called
 		// after all draw calls
 		virtual void refresh() {};
+        // Presentation only: stretched, framed original proportions, black borders.
+        void setDisplayMode(int mode) { mDisplayMode = mode>=0 && mode<=2 ? mode : 0; }
+        int getDisplayMode() const { return mDisplayMode; }
+        Vector2 normalizedToGame(float x, float y) const;
 
 		// Init with the desired Resolution.
 		// Note: It is not guaranteed that this resolution will be selected
@@ -182,5 +186,7 @@ class RenderManager : public ObjectCounter<RenderManager>
 		float mMouseMarkerPosition;
 
 	private:
+        int mDisplayMode = 0;
 		std::unique_ptr<BloodManager> mBloodMgr;
 };
+

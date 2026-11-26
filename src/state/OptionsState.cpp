@@ -217,6 +217,8 @@ void GraphicOptionsState::init()
 	mLeftMorphing = mOptionConfig.getBool("left_blobby_oscillate");
 	mRightMorphing = mOptionConfig.getBool("right_blobby_oscillate");
 	mShowShadow = mOptionConfig.getBool("show_shadow");
+    mDisplayMode=getApp().getRenderManager().getDisplayMode();
+    mOriginalDisplayMode=mDisplayMode;
 }
 
 GraphicOptionsState::~GraphicOptionsState() = default;
@@ -244,7 +246,8 @@ void GraphicOptionsState::save()
 	mOptionConfig.setBool("left_blobby_oscillate", mLeftMorphing);
 	mOptionConfig.setBool("right_blobby_oscillate", mRightMorphing);
 
-	mOptionConfig.saveFile("config.xml");
+	mOptionConfig.setInteger("display_mode",mDisplayMode);
+    mOptionConfig.saveFile("config.xml");
 }
 
 void GraphicOptionsState::step_impl()
@@ -254,6 +257,15 @@ void GraphicOptionsState::step_impl()
 	imgui.doImage(GEN_ID, Vector2(400.0, 300.0), "background");
 	imgui.doOverlay(GEN_ID, Vector2(0.0, 0.0), Vector2(800.0, 600.0));
 
+#ifdef BLOBBY_MODERN_UI
+    imgui.doText(GEN_ID,Vector2(430,10),"DISPLAY MODE",TF_SMALL_FONT);
+    const char* modes[]={"STRETCHED","ORIGINAL + FRAMES","ORIGINAL + BLACK BORDERS"};
+    if(imgui.doButton(GEN_ID,Vector2(430,38),modes[mDisplayMode],TF_SMALL_FONT)) {
+        mDisplayMode=(mDisplayMode+1)%3;
+        getApp().getRenderManager().setDisplayMode(mDisplayMode);
+    }
+    imgui.doText(GEN_ID,Vector2(430,64),"A / TAP TO CHANGE",TF_SMALL_FONT);
+#endif
 #if BLOBBY_ON_DESKTOP
 	imgui.doText(GEN_ID, Vector2(34.0, 10.0), TextManager::OP_VIDEO);
 
@@ -415,6 +427,7 @@ void GraphicOptionsState::step_impl()
 	}
 	if (imgui.doButton(GEN_ID, Vector2(424.0, 530.0), TextManager::LBL_CANCEL))
 	{
+        getApp().getRenderManager().setDisplayMode(mOriginalDisplayMode);
 		switchState(new OptionState());
 	}
 }
@@ -1120,3 +1133,4 @@ void MiscOptionsState::init()
 	mNetworkSide = mOptionConfig.getInteger("network_side");
 	mLanguage = mOptionConfig.getString("language");
 }
+

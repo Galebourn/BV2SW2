@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 /* header include */
 #include "RenderManagerSDL.h"
+#include "DisplayLayout.h"
 
 /* includes */
 #include "FileExceptions.h"
@@ -101,8 +102,12 @@ void RenderManagerSDL::init(int xResolution, int yResolution, bool fullscreen)
 	mWindow = SDL_CreateWindow(AppTitle,
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
-		xResolution, yResolution,
-		screenFlags);
+		#ifdef BLOBBY_SWITCH2
+        1920,1080,
+#else
+        xResolution,yResolution,
+#endif
+        screenFlags);
 
 #if !(defined __SWITCH__) && !(defined BUILD_MACOS_BUNDLE)
 	// Set icon
@@ -614,26 +619,33 @@ void RenderManagerSDL::drawParticle(const Vector2& pos, int player)
 
 void RenderManagerSDL::refresh()
 {
-	SDL_SetRenderTarget(mRenderer, nullptr);
-
-	// We have a resizeable window
-	// Resize renderer if needed
-	// TODO: We should catch the resize event
-	SDL_Rect renderRect;
-	int windowX;
-	int windowY;
-	SDL_RenderGetViewport(mRenderer, &renderRect);
-	SDL_GetWindowSize(mWindow, &windowX, &windowY);
-	if (renderRect.w != windowX || renderRect.h != windowY)
-	{
-		renderRect.w = windowX;
-		renderRect.h = windowY;
-		SDL_RenderSetViewport(mRenderer, &renderRect);
-	}
-
-	SDL_RenderCopy(mRenderer, mRenderTarget, nullptr, nullptr);
-	SDL_RenderPresent(mRenderer);
-	SDL_SetRenderTarget(mRenderer, mRenderTarget);
+    SDL_SetRenderTarget(mRenderer,nullptr);
+    SDL_RenderSetViewport(mRenderer,nullptr);
+    int w=0,h=0;
+    SDL_GetRendererOutputSize(mRenderer,&w,&h);
+    SDL_SetRenderDrawColor(mRenderer,0,0,0,255);
+    SDL_RenderClear(mRenderer);
+    if(getDisplayMode()==0) {
+        SDL_RenderCopy(mRenderer,mRenderTarget,nullptr,nullptr);
+    } else {
+        DisplayLayout layout{float(w),float(h)};
+        SDL_Rect court{int(lround(layout.left)),int(lround(layout.top)),
+                       int(lround(800*layout.scale)),int(lround(600*layout.scale))};
+        if(getDisplayMode()==1) {
+            // Decorative background only: no duplicate ball, players or HUD.
+            SDL_SetTextureColorMod(mBackground,65,65,75);
+            SDL_RenderCopy(mRenderer,mBackground,nullptr,nullptr);
+            SDL_SetTextureColorMod(mBackground,255,255,255);
+            // Draw the frame outside the playable image, never crop the court.
+            const int line=std::max(2,int(lround(2*layout.scale)));
+            SDL_Rect outer{court.x-line,court.y-line,court.w+2*line,court.h+2*line};
+            SDL_SetRenderDrawColor(mRenderer,224,187,108,255);
+            SDL_RenderFillRect(mRenderer,&outer);
+        }
+        SDL_RenderCopy(mRenderer,mRenderTarget,nullptr,&court);
+    }
+    SDL_RenderPresent(mRenderer);
+    SDL_SetRenderTarget(mRenderer,mRenderTarget);
 }
 
 void RenderManagerSDL::drawGame(const DuelMatchState& gameState)
@@ -702,3 +714,4 @@ void RenderManagerSDL::drawGame(const DuelMatchState& gameState)
 	position = blobRect(gameState.getBlobPosition(RIGHT_PLAYER));
 	SDL_RenderCopy(mRenderer, mRightBlob[rightFrame].mSDLsf, nullptr, &position);
 }
+
