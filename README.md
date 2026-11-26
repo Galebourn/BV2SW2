@@ -4,6 +4,14 @@ Experimental native Switch 2 port of [Blobby Volley 2](https://github.com/daniel
 
 **The initial build runs on Switch 2 hardware, as confirmed by its tester. The controller/menu update below is compiled and regression-tested; hardware confirmation of the update is pending. LAN and online play remain untested.**
 
+## Display modes update — 26 November 2026
+
+**Options → Graphic Options → Display Mode** offers **Stretched** (default), **Original + Frames**, and **Original + Black Borders**. Press A or tap the mode to cycle, then OK to save; Cancel restores the previous mode.
+
+The original modes preserve 4:3 proportions: a 1440×1080 court with 240-pixel side borders on a 1920×1080 output. Frames use dimmed scenery and gold edge markers. All modes scale the original 800×600 canvas; they do not add native HD artwork. Court boundaries, wall bounces, physics, bots and timing are unchanged. Touch coordinates follow the selected mode; border taps do not activate controls.
+
+Existing users with the beach update only need to replace `/switch/blobby2/blobby.nro`. Keep `data/` and `user/`. This update passed automated rendering, touch, save/cancel and build checks; Switch 2 hardware verification remains pending.
+
 ## Local play, rumble and beach update — 25 November 2026
 
 - Direct **Single Player** (human versus computer) and **Two Players** (same Switch) choices.
@@ -19,7 +27,7 @@ The new native controller and rumble implementation is compiled and tested with 
 
 ## Download and install
 
-[Download the compiled package](https://github.com/Galebourn/BV2SW2/actions/runs/45717104114/artifacts/15071285246) (GitHub sign-in may be required).
+[Download the compiled package](https://github.com/Galebourn/BV2SW2/actions/runs/45893979003/artifacts/15152044229) (GitHub sign-in may be required).
 
 Extract the ZIP and copy its `switch/blobby2` directory to `/switch/blobby2` on the SD card. Keep the `data` directory alongside `blobby.nro`; the NRO alone is insufficient. Launch it in kaiHEN's homebrew menu using a native Switch 2 game.
 
@@ -29,14 +37,14 @@ Preferences and replays are stored under `/switch/blobby2/user`, created on laun
 
 ## Build and verification
 
-- Successful source commit: `d4ddec1bdbf4b87c2e9a71c365cda62dbfffe010`.
-- [Successful build](https://github.com/Galebourn/BV2SW2/actions/runs/45717104114).
+- Successful source commit: `4318749730d4a7e275b6e5fe8b21e83183c2e6c3`.
+- [Successful build](https://github.com/Galebourn/BV2SW2/actions/runs/45893979003).
 - Controller tests passed for both sideways orientations, join order, separate player routing, rumble duration, disable/disconnect stopping and timer wrap.
 - All four fields were rendered with game sprites and their packaged BMP dimensions verified.
 - Native SDL interaction tests passed for spatial navigation, list/slider editing, Back/cancel, touch taps and slider dragging; rendered menu previews were inspected.
 - ARM64 cross-compilation, linking, NRO packaging and NRO magic check passed.
 - Package contains the game assets and installed-package version manifest.
-- ZIP SHA-256: `d824cebb55009e515f739db322083230565d5c9f352d39d2fa9f05d154c44424`.
+- ZIP SHA-256: `f63fd928dc4966ffd036da409847cf2356c30e1c04d9d53780a5a9a920dbd430`.
 
 Build with Docker from the repository root:
 
