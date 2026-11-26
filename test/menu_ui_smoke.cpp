@@ -177,10 +177,9 @@ int main(int argc, char** argv)
         float nx=x/800.0f;
         if(renderer.getDisplayMode()!=0) nx=(240+x*1.8f)/1920;
         touch(SDL_FINGERDOWN,nx*800,y); screen();
-        std::cerr << "tap down mode=" << renderer.getDisplayMode() << " state=" << app.getCurrenStateName() << " pos=" << app.getInputManager().position().x << "," << app.getInputManager().position().y << " click=" << app.getInputManager().click() << std::endl;
         touch(SDL_FINGERUP,nx*800,y); screen();
     };
-    tapGame(480,44); std::cerr << "after tap mode=" << renderer.getDisplayMode() << std::endl; assert(renderer.getDisplayMode()==1);
+    tapGame(480,44); assert(renderer.getDisplayMode()==1);
     tapGame(480,44); assert(renderer.getDisplayMode()==2);
     // Touching the decorative region must not be clamped into an edge button.
     touch(SDL_FINGERDOWN,20,44); screen(); touch(SDL_FINGERUP,20,44); screen();

@@ -467,6 +467,7 @@ void RenderManagerSDL::showShadow(bool shadow)
 
 void RenderManagerSDL::drawText(const std::string& text, Vector2 position, unsigned int flags)
 {
+    SDL_SetRenderTarget(mRenderer,mRenderTarget);
 	drawTextImpl(text, position, flags);
 }
 
@@ -519,6 +520,7 @@ void RenderManagerSDL::drawTextImpl(const std::string& text, Vector2 position, u
 
 void RenderManagerSDL::drawImage(const std::string& filename, Vector2 position, Vector2 size)
 {
+    SDL_SetRenderTarget(mRenderer,mRenderTarget);
 	BufferedImage* imageBuffer = mImageMap[filename];
 
 	if (!imageBuffer)
@@ -561,6 +563,7 @@ void RenderManagerSDL::drawImage(const std::string& filename, Vector2 position, 
 
 void RenderManagerSDL::drawOverlay(float opacity, Vector2 pos1, Vector2 pos2, Color col)
 {
+    SDL_SetRenderTarget(mRenderer,mRenderTarget);
 	SDL_Rect ovRect;
 	ovRect.x = (int)lround(pos1.x);
 	ovRect.y = (int)lround(pos1.y);
@@ -573,6 +576,7 @@ void RenderManagerSDL::drawOverlay(float opacity, Vector2 pos1, Vector2 pos2, Co
 
 void RenderManagerSDL::drawBlob(const Vector2& pos, const Color& col)
 {
+    SDL_SetRenderTarget(mRenderer,mRenderTarget);
 	SDL_Rect position;
 	position.x = (int)lround(pos.x);
 	position.y = (int)lround(pos.y);
@@ -605,6 +609,7 @@ void RenderManagerSDL::drawBlob(const Vector2& pos, const Color& col)
 
 void RenderManagerSDL::drawParticle(const Vector2& pos, int player)
 {
+    SDL_SetRenderTarget(mRenderer,mRenderTarget);
 	SDL_Rect blitRect = {
 		(short)lround(pos.x - float(9) / 2.0),
 		(short)lround(pos.y - float(9) / 2.0),
@@ -645,11 +650,13 @@ void RenderManagerSDL::refresh()
         SDL_RenderCopy(mRenderer,mRenderTarget,nullptr,&court);
     }
     SDL_RenderPresent(mRenderer);
-    SDL_SetRenderTarget(mRenderer,mRenderTarget);
+    // Leave the window active between frames: SDL touch event normalization
+    // must use output dimensions, not the 800x600 off-screen texture.
 }
 
 void RenderManagerSDL::drawGame(const DuelMatchState& gameState)
 {
+    SDL_SetRenderTarget(mRenderer,mRenderTarget);
 	SDL_RenderCopy(mRenderer, mBackground, nullptr, nullptr);
 
 	SDL_Rect position;
